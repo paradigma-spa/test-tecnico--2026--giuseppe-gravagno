@@ -111,3 +111,34 @@ export const getMyOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Errore server" });
   }
 };
+
+
+export const getMostPopularOrder = async (req: Request, res: Response) => {
+  try {
+    const result = await Order.aggregate([
+      {
+        $group: {
+          _id: "$typeFood",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { count: -1 },
+      },
+      {
+        $limit: 1,
+      },
+    ]);
+
+    if (result.length === 0) {
+      return res.status(404).json({ message: "Nessun ordine trovato" });
+    }
+
+    return res.status(200).json({
+      mostPopular: result[0]._id,
+      count: result[0].count,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Errore server" });
+  }
+};

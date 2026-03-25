@@ -2,6 +2,7 @@ import express, { type Application, type Request, type Response, type NextFuncti
 import mongoose from 'mongoose';
 import authRouter from "./routes/authRoutes.js"
 import orderRouter from "./routes/orderRoutes.js"
+import userRoutes from './routes/userRoutes.js';
 
 const app= express()
 
@@ -22,6 +23,8 @@ connectDB()
 app.use("/auth", authRouter)
 
 app.use("/orders", orderRouter)
+
+app.use("/users", userRoutes)
 
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
