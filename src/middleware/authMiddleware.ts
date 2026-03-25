@@ -12,7 +12,6 @@ declare module "express-serve-static-core" {
   }
 }
 
-
 export const verifyJWT = (req: Request, res: Response, next: NextFunction) => {
   try {
     const token = req.query.token as string;
@@ -34,12 +33,12 @@ export const verifyJWT = (req: Request, res: Response, next: NextFunction) => {
 export const validateRegister = [
     body("username").notEmpty(),
     body("email").isEmail().notEmpty().withMessage("Inserisci una mail valida"),
-    body("password").isLength({ min: 8})
+    body("password").isStrongPassword().withMessage("La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero")
 ]
 
 export const validateLogin = [
-    body("email").isEmail().notEmpty().withMessage("Inserisci una mail valida"),
-    body("password").isLength({ min: 8 }).withMessage("La password deve essere di 8 caratteri")
+    body("email").isEmail().notEmpty().withMessage("La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero"),
+    body("password").isStrongPassword().withMessage("La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero")
 ]
     
 
