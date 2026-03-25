@@ -18,12 +18,16 @@ export const getOrders = async (req: Request, res: Response) => {
 
 export const newOrder = async (req: Request, res: Response) => {
   try {
-    const { typeFood, quantity, date, hours } = req.body;
+    const { typeFood, quantity } = req.body;
+
+    if (!req.user) {
+      return res.status(401).json({ message: "Non autenticato" });
+    }
 
     const newOrder = new Order({
       typeFood: typeFood,
       quantity: quantity,
-      user: req.user?._id,
+      user: req.user._id,
     });
 
     await newOrder.save();
@@ -46,6 +50,14 @@ export const updateOrder = async (req: Request, res: Response) => {
       return res.status(404).json({ message: `Nessun ordine presente con l'id: ${id}` });
     }
 
+    if (!order.user) {
+      return res.status(500).json({ message: "Ordine senza utente (errore dati)" });
+    }
+
+    if (order.user.toString() !== req.user?._id) {
+      return res.status(403).json({ message: "Non autorizzato" });
+    }
+
     order.typeFood = typeFood ?? order.typeFood;
     order.quantity = quantity ?? order.quantity;
 
@@ -63,8 +75,20 @@ export const deleteOrder = async (req: Request, res: Response) => {
 
     const order = await Order.findById(id);
 
-    if (order!.user!.toString() !== req.user!._id) {
-      return res.status(403).json({ message: "Non puoi eliminare questa task" });
+    if (!order) {
+      return res.status(404).json({ message: "Ordine non trovato" });
+    }
+
+    if (!req.user) {
+      return res.status(401).json({ message: "Non autenticato" });
+    }
+
+    if (!order.user) {
+      return res.status(500).json({ message: "Ordine senza utente (errore dati)" });
+    }
+
+    if (order.user.toString() !== req.user._id) {
+      return res.status(403).json({ message: "Non puoi eliminare questo ordine" });
     }
 
     await order!.deleteOne();
