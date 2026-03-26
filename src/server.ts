@@ -1,5 +1,11 @@
 import mongoose from "mongoose";
 import app from "./app";
+import dotenv from "dotenv"
+import serverless from "serverless-http"
+
+dotenv.config({})
+
+export const handler = serverless(app)
 
 const connectDB = async () => {
   try {
@@ -21,3 +27,4 @@ app.listen(PORT, () => {
     console.log("Server non avviato correttamente");
   }
 });
+
