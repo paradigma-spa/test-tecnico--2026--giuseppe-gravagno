@@ -1,9 +1,9 @@
 import request from "supertest";
-import app from "../src/app";
-import { User } from "../src/models/userModel";
-import { Order } from "../src/models/orderModel";
+import app from "../app";
+import { User } from "../models/userModel";
+import { Order } from "../models/orderModel";
 
-jest.mock("../src/models/userModel", () => {
+jest.mock("../models/userModel", () => {
   const User = jest.fn().mockImplementation((data) => ({
     ...data,
     save: jest.fn().mockResolvedValue(data),
@@ -16,7 +16,7 @@ jest.mock("../src/models/userModel", () => {
   return { User };
 });
 
-jest.mock("../src/models/orderModel", () => ({
+jest.mock("../models/orderModel", () => ({
   Order: {
     aggregate: jest.fn(),
   },

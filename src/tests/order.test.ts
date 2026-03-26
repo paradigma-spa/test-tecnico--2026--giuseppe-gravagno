@@ -1,10 +1,10 @@
 import request from "supertest";
-import app from "../src/app";
+import app from "../app";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../src/config";
-import { Order } from "../src/models/orderModel";
+import { JWT_SECRET } from "../config";
+import { Order } from "../models/orderModel";
 
-jest.mock("../src/models/orderModel", () => {
+jest.mock("../models/orderModel", () => {
   const Order = jest.fn().mockImplementation((data) => ({
     ...data,
     save: jest.fn().mockResolvedValue(data),

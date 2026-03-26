@@ -1,8 +1,8 @@
 import request from "supertest";
-import app from "../src/app";
-import { User } from "../src/models/userModel";
+import app from "../app";
+import { User } from "../models/userModel";
 
-jest.mock("../src/models/userModel", () => {
+jest.mock("../models/userModel", () => {
   const User = jest.fn().mockImplementation((data) => ({
     ...data,
     save: jest.fn().mockResolvedValue(data),
