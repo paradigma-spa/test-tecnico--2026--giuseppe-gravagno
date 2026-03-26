@@ -1,15 +1,9 @@
-import express, {
-  type Application,
-  type Request,
-  type Response,
-  type NextFunction,
-} from "express";
-import { Order } from "../models/orderModel.js";
+import { type Request, type Response } from "express";
+import { Order } from "../models/orderModel";
 
 export const getOrders = async (req: Request, res: Response) => {
   try {
     const allOrders = await Order.find();
-
     return res.status(200).json({ allOrders });
   } catch (error) {
     res.status(500).json({ message: "Errore interno server" });
@@ -47,11 +41,15 @@ export const updateOrder = async (req: Request, res: Response) => {
     const order = await Order.findById(id);
 
     if (!order) {
-      return res.status(404).json({ message: `Nessun ordine presente con l'id: ${id}` });
+      return res
+        .status(404)
+        .json({ message: `Nessun ordine presente con l'id: ${id}` });
     }
 
     if (!order.user) {
-      return res.status(500).json({ message: "Ordine senza utente (errore dati)" });
+      return res
+        .status(500)
+        .json({ message: "Ordine senza utente (errore dati)" });
     }
 
     if (order.user.toString() !== req.user?._id) {
@@ -84,16 +82,22 @@ export const deleteOrder = async (req: Request, res: Response) => {
     }
 
     if (!order.user) {
-      return res.status(500).json({ message: "Ordine senza utente (errore dati)" });
+      return res
+        .status(500)
+        .json({ message: "Ordine senza utente (errore dati)" });
     }
 
     if (order.user.toString() !== req.user._id) {
-      return res.status(403).json({ message: "Non puoi eliminare questo ordine" });
+      return res
+        .status(403)
+        .json({ message: "Non puoi eliminare questo ordine" });
     }
 
     await order!.deleteOne();
 
-    return res.status(200).json({ message: `Ordine con id ${id} eliminato correttamente` });
+    return res
+      .status(200)
+      .json({ message: `Ordine con id ${id} eliminato correttamente` });
   } catch (error) {
     return res.status(500).json({ message: "Errore server" });
   }
@@ -111,7 +115,6 @@ export const getMyOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Errore server" });
   }
 };
-
 
 export const getMostPopularOrder = async (req: Request, res: Response) => {
   try {

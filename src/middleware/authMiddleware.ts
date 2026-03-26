@@ -1,7 +1,7 @@
-import express, { type Application, type Request, type Response, type NextFunction } from 'express';
-import jwt from "jsonwebtoken"
-import { JWT_SECRET } from "../config.js";
-import { body } from 'express-validator';
+import { type Request, type Response, type NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { JWT_SECRET } from "../config";
+import { body } from "express-validator";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -40,14 +40,25 @@ export const verifyJWT = (req: Request, res: Response, next: NextFunction) => {
 };
 
 export const validateRegister = [
-    body("username").notEmpty(),
-    body("email").isEmail().notEmpty().withMessage("Inserisci una mail valida"),
-    body("password").isStrongPassword().withMessage("La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero")
-]
+  body("username").notEmpty(),
+  body("email").isEmail().notEmpty().withMessage("Inserisci una mail valida"),
+  body("password")
+    .isStrongPassword()
+    .withMessage(
+      "La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero",
+    ),
+];
 
 export const validateLogin = [
-    body("email").isEmail().notEmpty().withMessage("La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero"),
-    body("password").isStrongPassword().withMessage("La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero")
-]
-    
-
+  body("email")
+    .isEmail()
+    .notEmpty()
+    .withMessage(
+      "La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero",
+    ),
+  body("password")
+    .isStrongPassword()
+    .withMessage(
+      "La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero",
+    ),
+];

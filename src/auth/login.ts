@@ -1,12 +1,7 @@
-import express, {
-  type Application,
-  type Request,
-  type Response,
-  type NextFunction,
-} from "express";
-import { JWT_SECRET } from "../config.js";
+import { type Request, type Response } from "express";
+import { JWT_SECRET } from "../config";
 import jwt from "jsonwebtoken";
-import { User } from "../models/userModel.js";
+import { User } from "../models/userModel";
 
 export const userLogin = async (req: Request, res: Response) => {
   try {
@@ -15,11 +10,11 @@ export const userLogin = async (req: Request, res: Response) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(404).json({ message: "Inserisci uno user" });
+      return res.status(401).json({ message: "Credenziali non valide" });
     }
 
     if (user!.password !== password) {
-      return res.status(404).json({ message: "Le password non corrispondono" });
+      return res.status(401).json({ message: "Credenziali non valide" });
     }
 
     const token = jwt.sign(

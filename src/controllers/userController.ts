@@ -1,16 +1,11 @@
-import express, {
-  type Application,
-  type Request,
-  type Response,
-  type NextFunction,
-} from "express";
-import { User } from "../models/userModel.js";
-import { Order } from "../models/orderModel.js";
+import { type Request, type Response } from "express";
+import { User } from "../models/userModel";
+import { Order } from "../models/orderModel";
 
 export const allUsers = async (req: Request, res: Response) => {
   try {
     const allUsers = await User.find();
-    return res.status(200).json(allUsers);
+    return res.status(200).json({allUsers});
   } catch (error) {
     res.status(500).json({ message: "Errore interno server" });
   }
