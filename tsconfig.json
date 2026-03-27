@@ -7,7 +7,7 @@
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
-    "module": "commonjs",
+    "module": "node16",
     "target": "es2020",
     "types": ["jest", "node"],
 
@@ -36,12 +36,19 @@
     // Recommended Options
     "strict": true,
     "esModuleInterop": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "isolatedModules": true,
     "skipLibCheck": true
   },
 
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist","jest.config.ts", "prisma.config.ts", "src/__tests__/**/*", "**/*.test.ts", "**/*.test.tsx"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "jest.config.ts",
+    "prisma.config.ts",
+    "src/__tests__/**/*",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
 }
-

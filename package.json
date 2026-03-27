@@ -33,7 +33,10 @@
     "serverless-webpack": "^5.15.3",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",
+    "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
+    "typescript": "^6.0.2",
+    "typescript5": "npm:typescript@^5.9.3",
     "webpack": "^5.105.3",
     "webpack-cli": "^6.0.1",
     "webpack-node-externals": "^3.0.0"

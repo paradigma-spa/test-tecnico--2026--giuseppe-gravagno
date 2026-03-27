@@ -11,6 +11,13 @@ const app = express();
 
 app.use(express.json());
 
+app.get("/", (req: Request, res: Response) => {
+  res.status(200).json({
+    message: "API online",
+    hint: "Prova anche /auth, /orders, /users",
+  });
+});
+
 app.use("/auth", authRouter);
 app.use("/orders", orderRouter);
 app.use("/users", userRoutes);
