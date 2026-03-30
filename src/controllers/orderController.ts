@@ -1,9 +1,10 @@
 import { type Request, type Response } from "express";
-import { Order } from "../models/orderModel";
+import { randomUUID } from "crypto";
+import { OrderDynamo } from "../models/orderModel";
 
 export const getOrders = async (req: Request, res: Response) => {
   try {
-    const allOrders = await Order.find();
+    const allOrders = await OrderDynamo.scan().exec();
     return res.status(200).json({ allOrders });
   } catch (error) {
     res.status(500).json({ message: "Errore interno server" });
@@ -18,13 +19,12 @@ export const newOrder = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Non autenticato" });
     }
 
-    const newOrder = new Order({
-      typeFood: typeFood,
-      quantity: quantity,
-      user: req.user._id,
+    await OrderDynamo.create({
+      id: randomUUID(),
+      typeFood,
+      quantity,
+      userId: req.user._id,
     });
-
-    await newOrder.save();
 
     res.status(201).json({ message: "Nuovo ordine creato correttamente" });
   } catch (error) {
@@ -34,11 +34,18 @@ export const newOrder = async (req: Request, res: Response) => {
 
 export const updateOrder = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const idParam = req.params.id;
+    const id = Array.isArray(idParam) ? idParam[0] : idParam;
+
+    if (!id) {
+      return res.status(400).json({ message: "Id ordine mancante" });
+    }
 
     const { typeFood, quantity } = req.body;
 
-    const order = await Order.findById(id);
+    const order = (await OrderDynamo.get(id)) as unknown as
+      | { userId: string }
+      | undefined;
 
     if (!order) {
       return res
@@ -46,20 +53,17 @@ export const updateOrder = async (req: Request, res: Response) => {
         .json({ message: `Nessun ordine presente con l'id: ${id}` });
     }
 
-    if (!order.user) {
-      return res
-        .status(500)
-        .json({ message: "Ordine senza utente (errore dati)" });
-    }
-
-    if (order.user.toString() !== req.user?._id) {
+    if (order.userId !== req.user?._id) {
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
-    order.typeFood = typeFood ?? order.typeFood;
-    order.quantity = quantity ?? order.quantity;
+    const updates: { typeFood?: string; quantity?: number } = {};
+    if (typeFood !== undefined) updates.typeFood = typeFood;
+    if (quantity !== undefined) updates.quantity = quantity;
 
-    await order.save();
+    if (Object.keys(updates).length > 0) {
+      await OrderDynamo.update(id, updates);
+    }
 
     return res.status(200).json({ message: "Ordine modificato correttamente" });
   } catch (error) {
@@ -69,9 +73,16 @@ export const updateOrder = async (req: Request, res: Response) => {
 
 export const deleteOrder = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const idParam = req.params.id;
+    const id = Array.isArray(idParam) ? idParam[0] : idParam;
 
-    const order = await Order.findById(id);
+    if (!id) {
+      return res.status(400).json({ message: "Id ordine mancante" });
+    }
+
+    const order = (await OrderDynamo.get(id)) as unknown as
+      | { userId: string }
+      | undefined;
 
     if (!order) {
       return res.status(404).json({ message: "Ordine non trovato" });
@@ -81,19 +92,13 @@ export const deleteOrder = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Non autenticato" });
     }
 
-    if (!order.user) {
-      return res
-        .status(500)
-        .json({ message: "Ordine senza utente (errore dati)" });
-    }
-
-    if (order.user.toString() !== req.user._id) {
+    if (order.userId !== req.user._id) {
       return res
         .status(403)
         .json({ message: "Non puoi eliminare questo ordine" });
     }
 
-    await order!.deleteOne();
+    await OrderDynamo.delete(id);
 
     return res
       .status(200)
@@ -109,7 +114,11 @@ export const getMyOrder = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Utente non autenticato" });
     }
 
-    const orders = await Order.find({ user: req.user!._id });
+    const orders = await OrderDynamo.query("userId")
+      .using("UserOrdersIndex")
+      .eq(req.user._id)
+      .exec();
+
     return res.status(200).json({ orders });
   } catch (error) {
     return res.status(500).json({ message: "Errore server" });
@@ -118,28 +127,35 @@ export const getMyOrder = async (req: Request, res: Response) => {
 
 export const getMostPopularOrder = async (req: Request, res: Response) => {
   try {
-    const result = await Order.aggregate([
-      {
-        $group: {
-          _id: "$typeFood",
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $sort: { count: -1 },
-      },
-      {
-        $limit: 1,
-      },
-    ]);
+    const orders = await OrderDynamo.scan().exec();
 
-    if (result.length === 0) {
+    if (orders.length === 0) {
       return res.status(404).json({ message: "Nessun ordine trovato" });
     }
 
+    const counts = new Map<string, number>();
+    for (const order of orders) {
+      const key = order.typeFood;
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    if (counts.size === 0) {
+      return res.status(404).json({ message: "Nessun ordine trovato" });
+    }
+
+    let mostPopular = "";
+    let maxCount = 0;
+    for (const [food, count] of counts.entries()) {
+      if (count > maxCount) {
+        mostPopular = food;
+        maxCount = count;
+      }
+    }
+
     return res.status(200).json({
-      mostPopular: result[0]._id,
-      count: result[0].count,
+      mostPopular,
+      count: maxCount,
     });
   } catch (error) {
     return res.status(500).json({ message: "Errore server" });

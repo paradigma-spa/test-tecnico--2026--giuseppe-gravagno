@@ -11,6 +11,69 @@
       "tags": {
         "name": "giuseppe-gravagno"
       },
+      "environment": {
+        "USERS_TABLE": "order-api-dev-users",
+        "ORDERS_TABLE": "order-api-dev-orders"
+      },
+      "iam": {
+        "role": {
+          "statements": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:Query",
+                "dynamodb:Scan"
+              ],
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "UsersTable",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "UsersTable",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "OrdersTable",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "OrdersTable",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
       "apiGateway": {
         "binaryMediaTypes": [
           "multipart/form-data"
@@ -154,6 +217,9 @@
                             "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/order-api-dev*:*:*"
                           }
                         ]
+                      },
+                      {
+                        "$ref": "$[\"service\"][\"provider\"][\"iam\"][\"role\"][\"statements\"][0]"
                       }
                     ]
                   }
@@ -182,7 +248,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/order-api/dev/1774612389714-2026-03-27T11:53:09.714Z/order-api.zip"
+                "S3Key": "serverless/order-api/dev/1774879496562-2026-03-30T14:04:56.562Z/order-api.zip"
               },
               "Handler": "src/server.handler",
               "Runtime": "nodejs20.x",
@@ -197,8 +263,10 @@
               ],
               "Environment": {
                 "Variables": {
+                  "USERS_TABLE": "order-api-dev-users",
+                  "ORDERS_TABLE": "order-api-dev-orders",
                   "ACCOUNT_ID": "847041281071",
-                  "LAYER_VERSION": "1",
+                  "LAYER_VERSION": "3",
                   "JWT_SECRET": "codice_segreto"
                 }
               },
@@ -209,21 +277,21 @@
                 ]
               },
               "Layers": [
-                "arn:aws:lambda:eu-south-1:847041281071:layer:serverLayer:1"
+                "arn:aws:lambda:eu-south-1:847041281071:layer:serverLayer:3"
               ]
             },
             "DependsOn": [
               "LambdaLogGroup"
             ]
           },
-          "LambdaLambdaVersionGyO3bP2YB7W8q9hIiOMbKXh2NHgwyrH1nPLVwvPR8": {
+          "LambdaLambdaVersionNq4C5cMlmtVkW2UxgWdRgc87MICR4PXCpla4C9k08": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "LambdaLambdaFunction"
               },
-              "CodeSha256": "F4D5pMgObeF9uVDE8Hx+wGn66QA8O62FapVkljDYNmI="
+              "CodeSha256": "gKBQ+iOLUDCZWNpqC33PIm2b5ZXyr3rmibqQBNYWDdc="
             }
           },
           "ApiGatewayRestApi": {
@@ -351,7 +419,7 @@
               "LambdaLambdaPermissionApiGateway"
             ]
           },
-          "ApiGatewayDeployment1774612383624": {
+          "ApiGatewayDeployment1774879491948": {
             "Type": "AWS::ApiGateway::Deployment",
             "Properties": {
               "RestApiId": {
@@ -400,6 +468,88 @@
                 ]
               }
             }
+          },
+          "UsersTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "order-api-dev-users",
+              "BillingMode": "PAY_PER_REQUEST",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "email",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "EmailIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "email",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ]
+            }
+          },
+          "OrdersTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "order-api-dev-orders",
+              "BillingMode": "PAY_PER_REQUEST",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "userId",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "createdAt",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "UserOrdersIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "userId",
+                      "KeyType": "HASH"
+                    },
+                    {
+                      "AttributeName": "createdAt",
+                      "KeyType": "RANGE"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ]
+            }
           }
         },
         "Outputs": {
@@ -414,7 +564,7 @@
           "LambdaLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "LambdaLambdaVersionGyO3bP2YB7W8q9hIiOMbKXh2NHgwyrH1nPLVwvPR8"
+              "Ref": "LambdaLambdaVersionNq4C5cMlmtVkW2UxgWdRgc87MICR4PXCpla4C9k08"
             },
             "Export": {
               "Name": "sls-order-api-dev-LambdaLambdaFunctionQualifiedArn"
@@ -552,7 +702,9 @@
         },
         "environment": {
           "ACCOUNT_ID": "847041281071",
-          "LAYER_VERSION": "1",
+          "LAYER_VERSION": "3",
+          "USERS_TABLE": "order-api-dev-users",
+          "ORDERS_TABLE": "order-api-dev-orders",
           "JWT_SECRET": "codice_segreto"
         },
         "events": [
@@ -579,8 +731,95 @@
         "timeout": 6,
         "runtime": "nodejs20.x",
         "vpc": {},
-        "versionLogicalId": "LambdaLambdaVersionGyO3bP2YB7W8q9hIiOMbKXh2NHgwyrH1nPLVwvPR8"
+        "versionLogicalId": "LambdaLambdaVersionNq4C5cMlmtVkW2UxgWdRgc87MICR4PXCpla4C9k08"
       }
+    },
+    "resources": {
+      "Resources": {
+        "UsersTable": {
+          "Type": "AWS::DynamoDB::Table",
+          "Properties": {
+            "TableName": "order-api-dev-users",
+            "BillingMode": "PAY_PER_REQUEST",
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "id",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "email",
+                "AttributeType": "S"
+              }
+            ],
+            "KeySchema": [
+              {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+              }
+            ],
+            "GlobalSecondaryIndexes": [
+              {
+                "IndexName": "EmailIndex",
+                "KeySchema": [
+                  {
+                    "AttributeName": "email",
+                    "KeyType": "HASH"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                }
+              }
+            ]
+          }
+        },
+        "OrdersTable": {
+          "Type": "AWS::DynamoDB::Table",
+          "Properties": {
+            "TableName": "order-api-dev-orders",
+            "BillingMode": "PAY_PER_REQUEST",
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "id",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "userId",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "createdAt",
+                "AttributeType": "S"
+              }
+            ],
+            "KeySchema": [
+              {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+              }
+            ],
+            "GlobalSecondaryIndexes": [
+              {
+                "IndexName": "UserOrdersIndex",
+                "KeySchema": [
+                  {
+                    "AttributeName": "userId",
+                    "KeyType": "HASH"
+                  },
+                  {
+                    "AttributeName": "createdAt",
+                    "KeyType": "RANGE"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "Outputs": {}
     },
     "configValidationMode": "warn",
     "serviceFilename": "serverless.ts",
@@ -604,17 +843,20 @@
           "!layer/**"
         ],
         "artifactsS3KeyDirname": "serverless/order-api/dev/code-artifacts",
-        "artifactDirectoryName": "serverless/order-api/dev/1774612389714-2026-03-27T11:53:09.714Z"
+        "artifactDirectoryName": "serverless/order-api/dev/1774879496562-2026-03-30T14:04:56.562Z"
       },
       "functions": {
         "$ref": "$[\"service\"][\"functions\"]"
+      },
+      "resources": {
+        "$ref": "$[\"service\"][\"resources\"]"
       }
     },
     "layers": {},
     "isDashboardMonitoringPreconfigured": false
   },
   "package": {
-    "artifactDirectoryName": "serverless/order-api/dev/1774612389714-2026-03-27T11:53:09.714Z",
+    "artifactDirectoryName": "serverless/order-api/dev/1774879496562-2026-03-30T14:04:56.562Z",
     "artifact": ""
   }
 }

@@ -1,11 +1,11 @@
 import { type Request, type Response } from "express";
-import { User } from "../models/userModel";
-import { Order } from "../models/orderModel";
+import { UserDynamo } from "../models/userModel";
+import { OrderDynamo } from "../models/orderModel";
 
 export const allUsers = async (req: Request, res: Response) => {
   try {
-    const allUsers = await User.find();
-    return res.status(200).json({allUsers});
+    const allUsers = await UserDynamo.scan().exec();
+    return res.status(200).json({ allUsers });
   } catch (error) {
     res.status(500).json({ message: "Errore interno server" });
   }
@@ -13,7 +13,7 @@ export const allUsers = async (req: Request, res: Response) => {
 
 export const getTopCustomer = async (req: Request, res: Response) => {
   try {
-    let { startDate, endDate } = req.query;
+    const { startDate, endDate } = req.query;
 
     const now = new Date();
     const oneMonthAgo = new Date();
@@ -22,50 +22,45 @@ export const getTopCustomer = async (req: Request, res: Response) => {
     const start = startDate ? new Date(startDate as string) : oneMonthAgo;
     const end = endDate ? new Date(endDate as string) : now;
 
-    const result = await Order.aggregate([
-      {
-        $match: {
-          createdAt: {
-            $gte: start,
-            $lte: end,
-          },
-        },
-      },
-      {
-        $group: {
-          _id: "$user",
-          totalOrders: { $sum: 1 },
-        },
-      },
-      {
-        $sort: { totalOrders: -1 },
-      },
-      {
-        $limit: 1,
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "userData",
-        },
-      },
-      {
-        $unwind: "$userData",
-      },
-    ]);
+    const orders = await OrderDynamo.scan().exec();
+    const counters = new Map<string, number>();
 
-    if (result.length === 0) {
+    for (const order of orders) {
+      const userId = (order as unknown as { userId?: string }).userId;
+      const createdAt = (order as unknown as { createdAt?: string }).createdAt;
+      if (!userId || !createdAt) continue;
+
+      const createdDate = new Date(createdAt);
+      if (Number.isNaN(createdDate.getTime())) continue;
+
+      if (createdDate >= start && createdDate <= end) {
+        counters.set(userId, (counters.get(userId) ?? 0) + 1);
+      }
+    }
+
+    if (counters.size === 0) {
       return res
         .status(404)
         .json({ message: "Nessun ordine trovato nel periodo" });
     }
 
+    let topCustomerId = "";
+    let totalOrders = 0;
+    for (const [userId, count] of counters.entries()) {
+      if (count > totalOrders) {
+        topCustomerId = userId;
+        totalOrders = count;
+      }
+    }
+
+    const userData = (await UserDynamo.get(topCustomerId)) as unknown as
+      | { email?: string }
+      | undefined;
+
     return res.status(200).json({
-      topCustomer: result[0]._id,
-      email: result[0].userData.email,
-      totalOrders: result[0].totalOrders,
+      topCustomer: topCustomerId,
+      email: userData?.email,
+      totalOrders,
     });
   } catch (error) {
     return res.status(500).json({ message: "Errore server" });

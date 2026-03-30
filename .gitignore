@@ -2,6 +2,8 @@ node_modules/
 dist/
 coverage/
 layer/
+.webpack/
+.serverless/
 
 # Environment variables
 .env

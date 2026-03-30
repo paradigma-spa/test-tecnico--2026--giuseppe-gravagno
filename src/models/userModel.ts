@@ -1,14 +1,39 @@
-import mongoose from "mongoose";
+import dynamoose from "dynamoose";
 
-const userSchema = new mongoose.Schema({
-  username: String,
-  email: {
-    type: String,
-    unique: true,
+const userDynamoSchema = new dynamoose.Schema(
+  {
+    id: {
+      type: String,
+      hashKey: true,
+      required: true,
+    },
+    username: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      index: {
+        name: "EmailIndex",
+        type: "global",
+      },
+    },
+    password: {
+      type: String,
+      required: true,
+    },
   },
-  password: {
-    type: String,
+  {
+    timestamps: true,
   },
-});
+);
 
-export const User = mongoose.model("User", userSchema);
+export const UserDynamo = dynamoose.model(
+  process.env.USERS_TABLE || "UsersTable",
+  userDynamoSchema,
+  {
+    create: false,
+    waitForActive: false,
+  },
+);

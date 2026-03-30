@@ -1,16 +1,40 @@
-import mongoose from "mongoose";
+import dynamoose from "dynamoose";
 
-const orderSchema = new mongoose.Schema({
-    typeFood: String, 
-    quantity: Number,
-
-    user:{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
+const orderDynamoSchema = new dynamoose.Schema({
+  id: {
+    type: String,
+    hashKey: true,
+    required: true,
+  },
+  typeFood: {
+    type: String,
+    required: true,
+  },
+  quantity: {
+    type: Number,
+    required: true,
+  },
+  userId: {
+    type: String,
+    required: true,
+    index: {
+      name: "UserOrdersIndex",
+      type: "global",
+      rangeKey: "createdAt",
     },
+  },
+  createdAt: {
+    type: String,
+    required: true,
+    default: () => new Date().toISOString(),
+  },
+});
 
-    createdAt: { type: Date, default: Date.now } 
-
-})
-
-export const Order = mongoose.model("Order", orderSchema)
+export const OrderDynamo = dynamoose.model(
+  process.env.ORDERS_TABLE || "OrdersTable",
+  orderDynamoSchema,
+  {
+    create: false,
+    waitForActive: false,
+  },
+);

@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
+import { randomUUID } from "crypto";
 import { type Request, type Response } from "express";
-import { User } from "../models/userModel";
+import { UserDynamo } from "../models/userModel";
 
 export const userRegister = async (req: Request, res: Response) => {
   try {
@@ -8,24 +8,25 @@ export const userRegister = async (req: Request, res: Response) => {
     const newEmail = req.body.email;
     const newPassword = req.body.password;
 
-    const exist = await User.findOne({ email: newEmail });
+    const existing = await UserDynamo.query("email")
+      .using("EmailIndex")
+      .eq(newEmail)
+      .exec();
 
-    if (exist) {
+    if (existing.count > 0) {
       return res
         .status(409)
         .json({ message: "Non puoi usare questa mail, è già registrata" });
     }
 
-    const newUser = new User({
+    await UserDynamo.create({
+      id: randomUUID(),
       username: newUsername,
       email: newEmail,
       password: newPassword,
     });
 
-    await newUser.save();
-
     return res.status(201).json({ message: "Utente creato" });
-    
   } catch (error) {
     return res.status(500).json({ message: "Creazione Utente fallita" });
   }

@@ -5,7 +5,9 @@ const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayer";
 const bucketName = "giuseppe-gravagno-orders";
-const layerVersion = "1";
+const layerVersion = "3";
+const usersTableName = `${projectName}-${"${sls:stage}"}-users`;
+const ordersTableName = `${projectName}-${"${sls:stage}"}-orders`;
 
 const serverlessConfig: AWS =
   process.env.DEPLOY === "functions"
@@ -19,6 +21,43 @@ const serverlessConfig: AWS =
           runtime,
           region,
           tags: { name: "giuseppe-gravagno" },
+          environment: {
+            USERS_TABLE: usersTableName,
+            ORDERS_TABLE: ordersTableName,
+          },
+          iam: {
+            role: {
+              statements: [
+                {
+                  Effect: "Allow",
+                  Action: [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                  ],
+                  Resource: [
+                    { "Fn::GetAtt": ["UsersTable", "Arn"] },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [{ "Fn::GetAtt": ["UsersTable", "Arn"] }, "/index/*"],
+                      ],
+                    },
+                    { "Fn::GetAtt": ["OrdersTable", "Arn"] },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [{ "Fn::GetAtt": ["OrdersTable", "Arn"] }, "/index/*"],
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          },
           apiGateway: {
             binaryMediaTypes: ["multipart/form-data"],
           },
@@ -44,12 +83,60 @@ const serverlessConfig: AWS =
             environment: {
               ACCOUNT_ID: accountId,
               LAYER_VERSION: layerVersion,
+              USERS_TABLE: usersTableName,
+              ORDERS_TABLE: ordersTableName,
               JWT_SECRET: "${env:JWT_SECRET}",
             },
             events: [
               { http: { method: "any", path: "/" } },
               { http: { method: "any", path: "/{proxy+}" } },
             ],
+          },
+        },
+        resources: {
+          Resources: {
+            UsersTable: {
+              Type: "AWS::DynamoDB::Table",
+              Properties: {
+                TableName: usersTableName,
+                BillingMode: "PAY_PER_REQUEST",
+                AttributeDefinitions: [
+                  { AttributeName: "id", AttributeType: "S" },
+                  { AttributeName: "email", AttributeType: "S" },
+                ],
+                KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+                GlobalSecondaryIndexes: [
+                  {
+                    IndexName: "EmailIndex",
+                    KeySchema: [{ AttributeName: "email", KeyType: "HASH" }],
+                    Projection: { ProjectionType: "ALL" },
+                  },
+                ],
+              },
+            },
+            OrdersTable: {
+              Type: "AWS::DynamoDB::Table",
+              Properties: {
+                TableName: ordersTableName,
+                BillingMode: "PAY_PER_REQUEST",
+                AttributeDefinitions: [
+                  { AttributeName: "id", AttributeType: "S" },
+                  { AttributeName: "userId", AttributeType: "S" },
+                  { AttributeName: "createdAt", AttributeType: "S" },
+                ],
+                KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
+                GlobalSecondaryIndexes: [
+                  {
+                    IndexName: "UserOrdersIndex",
+                    KeySchema: [
+                      { AttributeName: "userId", KeyType: "HASH" },
+                      { AttributeName: "createdAt", KeyType: "RANGE" },
+                    ],
+                    Projection: { ProjectionType: "ALL" },
+                  },
+                ],
+              },
+            },
           },
         },
       }
@@ -71,6 +158,7 @@ const serverlessConfig: AWS =
           },
         },
         package: {
+          excludeDevDependencies: false,
           patterns: [
             "layer/nodejs/node_modules/**",
             "!layer/nodejs/package*.json",

@@ -1,24 +1,29 @@
 import { type Request, type Response } from "express";
 import { JWT_SECRET } from "../config";
 import jwt from "jsonwebtoken";
-import { User } from "../models/userModel";
+import { UserDynamo } from "../models/userModel";
 
 export const userLogin = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const results = await UserDynamo.query("email")
+      .using("EmailIndex")
+      .eq(email)
+      .exec();
 
-    if (!user) {
+    if (results.count === 0) {
       return res.status(401).json({ message: "Credenziali non valide" });
     }
+
+    const user = results[0];
 
     if (user!.password !== password) {
       return res.status(401).json({ message: "Credenziali non valide" });
     }
 
     const token = jwt.sign(
-      { id: user!._id, username: user!.username },
+      { id: user!.id, username: user!.username },
       JWT_SECRET,
       { expiresIn: "1h" },
     );

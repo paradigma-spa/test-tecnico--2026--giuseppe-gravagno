@@ -22,7 +22,7 @@ module.exports = {
         test: /\.(tsx?)$/,
         loader: "ts-loader",
         options: {
-          compiler: "typescript5",
+          compiler: "typescript",
           transpileOnly: true,
           experimentalWatchApi: true,
           configFile: "tsconfig.json",
