@@ -5,7 +5,7 @@ const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayer";
 const bucketName = "giuseppe-gravagno-orders";
-const layerVersion = "3";
+const layerVersion = "4";
 const usersTableName = `${projectName}-${"${sls:stage}"}-users`;
 const ordersTableName = `${projectName}-${"${sls:stage}"}-orders`;
 
