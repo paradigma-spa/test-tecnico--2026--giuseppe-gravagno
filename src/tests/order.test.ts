@@ -2,25 +2,45 @@ import request from "supertest";
 import app from "../app";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config";
-import { Order } from "../models/orderModel";
+import { OrderDynamo } from "../models/orderModel";
 
 jest.mock("../models/orderModel", () => {
-  const Order = jest.fn().mockImplementation((data) => ({
-    ...data,
-    save: jest.fn().mockResolvedValue(data),
+  const scanExec = jest.fn();
+  const queryExec = jest.fn();
+
+  const scan = jest.fn().mockReturnValue({
+    exec: scanExec,
+  });
+
+  const query = jest.fn().mockImplementation(() => ({
+    using: jest.fn().mockReturnValue({
+      eq: jest.fn().mockReturnValue({
+        exec: queryExec,
+      }),
+    }),
   }));
 
-  (Order as any).find = jest.fn();
-  (Order as any).findById = jest.fn();
-  (Order as any).aggregate = jest.fn();
-
-  return { Order };
+  return {
+    OrderDynamo: {
+      scan,
+      query,
+      create: jest.fn(),
+      get: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      __scanExec: scanExec,
+      __queryExec: queryExec,
+    },
+  };
 });
 
-const mockedOrder = Order as unknown as jest.Mock & {
-  find: jest.Mock;
-  findById: jest.Mock;
-  aggregate: jest.Mock;
+const mockedOrderDynamo = OrderDynamo as unknown as {
+  create: jest.Mock;
+  get: jest.Mock;
+  update: jest.Mock;
+  delete: jest.Mock;
+  __scanExec: jest.Mock;
+  __queryExec: jest.Mock;
 };
 
 describe("Orders API", () => {
@@ -31,7 +51,7 @@ describe("Orders API", () => {
   // PROVE GET
 
   it("GET /orders → dovrebbe restituire tutti gli ordini", async () => {
-    mockedOrder.find.mockResolvedValue([]);
+    mockedOrderDynamo.__scanExec.mockResolvedValue([]);
 
     const res = await request(app).get("/orders");
 
@@ -44,8 +64,8 @@ describe("Orders API", () => {
       expiresIn: "1h",
     });
 
-    mockedOrder.find.mockResolvedValue([
-      { _id: "order-1", typeFood: "Pizza", quantity: 2, user: "user-1" },
+    mockedOrderDynamo.__queryExec.mockResolvedValue([
+      { id: "order-1", typeFood: "Pizza", quantity: 2, userId: "user-1" },
     ]);
 
     const res = await request(app)
@@ -68,6 +88,8 @@ describe("Orders API", () => {
       expiresIn: "1h",
     });
 
+    mockedOrderDynamo.create.mockResolvedValue({});
+
     const res = await request(app)
       .post("/orders")
       .set("Authorization", `Bearer ${token}`)
@@ -81,11 +103,7 @@ describe("Orders API", () => {
       message: "Nuovo ordine creato correttamente",
     });
 
-    expect(Order).toHaveBeenCalledWith({
-      typeFood: "Pizza",
-      quantity: 2,
-      user: "user-1",
-    });
+    expect(mockedOrderDynamo.create).toHaveBeenCalled();
   });
 
   it("POST /orders → senza token deve dare 401", async () => {
@@ -106,15 +124,13 @@ describe("Orders API", () => {
       expiresIn: "1h",
     });
 
-    const mockSave = jest.fn();
-
-    mockedOrder.findById.mockResolvedValue({
-      _id: "123",
+    mockedOrderDynamo.get.mockResolvedValue({
+      id: "123",
       typeFood: "Pasta",
       quantity: 1,
-      user: "user-1",
-      save: mockSave,
+      userId: "user-1",
     });
+    mockedOrderDynamo.update.mockResolvedValue({});
 
     const res = await request(app)
       .patch("/orders/123")
@@ -129,7 +145,10 @@ describe("Orders API", () => {
       message: "Ordine modificato correttamente",
     });
 
-    expect(mockSave).toHaveBeenCalled();
+    expect(mockedOrderDynamo.update).toHaveBeenCalledWith("123", {
+      typeFood: "Pizza",
+      quantity: 3,
+    });
   });
 
   it("PATCH /orders/:id → senza token deve dare 401", async () => {
@@ -148,7 +167,7 @@ describe("Orders API", () => {
       expiresIn: "1h",
     });
 
-    mockedOrder.findById.mockResolvedValue(null);
+    mockedOrderDynamo.get.mockResolvedValue(undefined);
 
     const res = await request(app)
       .patch("/orders/123")
@@ -161,16 +180,16 @@ describe("Orders API", () => {
     });
   });
 
-  it("PATCH /orders/:id → 500 se ordine senza utente", async () => {
+  it("PATCH /orders/:id → 403 se ordine di altro utente", async () => {
     const token = jwt.sign({ id: "user-1", username: "test" }, JWT_SECRET, {
       expiresIn: "1h",
     });
 
-    mockedOrder.findById.mockResolvedValue({
-      _id: "123",
+    mockedOrderDynamo.get.mockResolvedValue({
+      id: "123",
       typeFood: "Pasta",
       quantity: 1,
-      user: null,
+      userId: "user-2",
     });
 
     const res = await request(app)
@@ -178,9 +197,9 @@ describe("Orders API", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ typeFood: "Pizza" });
 
-    expect(res.statusCode).toBe(500);
+    expect(res.statusCode).toBe(403);
     expect(res.body).toEqual({
-      message: "Ordine senza utente (errore dati)",
+      message: "Non autorizzato",
     });
   });
 
@@ -189,12 +208,11 @@ describe("Orders API", () => {
       expiresIn: "1h",
     });
 
-    mockedOrder.findById.mockResolvedValue({
-      _id: "123",
+    mockedOrderDynamo.get.mockResolvedValue({
+      id: "123",
       typeFood: "Pasta",
       quantity: 1,
-      user: "user-2",
-      save: jest.fn(),
+      userId: "user-2",
     });
 
     const res = await request(app)
@@ -213,7 +231,7 @@ describe("Orders API", () => {
       expiresIn: "1h",
     });
 
-    mockedOrder.findById.mockRejectedValue(new Error("DB error"));
+    mockedOrderDynamo.get.mockRejectedValue(new Error("DB error"));
 
     const res = await request(app)
       .patch("/orders/123")
@@ -233,15 +251,13 @@ describe("Orders API", () => {
       expiresIn: "1h",
     });
 
-    const mockDeleteOne = jest.fn().mockResolvedValue({});
-
-    mockedOrder.findById.mockResolvedValue({
-      _id: "123",
+    mockedOrderDynamo.get.mockResolvedValue({
+      id: "123",
       typeFood: "Pizza",
       quantity: 2,
-      user: "user-1",
-      deleteOne: mockDeleteOne,
+      userId: "user-1",
     });
+    mockedOrderDynamo.delete.mockResolvedValue({});
 
     const res = await request(app)
       .delete("/orders/123")
@@ -251,7 +267,7 @@ describe("Orders API", () => {
     expect(res.body).toEqual({
       message: "Ordine con id 123 eliminato correttamente",
     });
-    expect(mockDeleteOne).toHaveBeenCalled();
+    expect(mockedOrderDynamo.delete).toHaveBeenCalledWith("123");
   });
 
   it("DELETE /orders/:id → senza token deve dare 401", async () => {
@@ -268,7 +284,7 @@ describe("Orders API", () => {
       expiresIn: "1h",
     });
 
-    mockedOrder.findById.mockResolvedValue(null);
+    mockedOrderDynamo.get.mockResolvedValue(undefined);
 
     const res = await request(app)
       .delete("/orders/123")
@@ -285,12 +301,11 @@ describe("Orders API", () => {
       expiresIn: "1h",
     });
 
-    mockedOrder.findById.mockResolvedValue({
-      _id: "123",
+    mockedOrderDynamo.get.mockResolvedValue({
+      id: "123",
       typeFood: "Pizza",
       quantity: 2,
-      user: "user-2",
-      deleteOne: jest.fn(),
+      userId: "user-2",
     });
 
     const res = await request(app)
@@ -303,25 +318,25 @@ describe("Orders API", () => {
     });
   });
 
-  it("DELETE /orders/:id → 500 se ordine senza utente", async () => {
+  it("DELETE /orders/:id → 403 se ordine di altro utente", async () => {
     const token = jwt.sign({ id: "user-1", username: "test" }, JWT_SECRET, {
       expiresIn: "1h",
     });
 
-    mockedOrder.findById.mockResolvedValue({
-      _id: "123",
+    mockedOrderDynamo.get.mockResolvedValue({
+      id: "123",
       typeFood: "Pizza",
       quantity: 2,
-      user: null,
+      userId: "user-2",
     });
 
     const res = await request(app)
       .delete("/orders/123")
       .set("Authorization", `Bearer ${token}`);
 
-    expect(res.statusCode).toBe(500);
+    expect(res.statusCode).toBe(403);
     expect(res.body).toEqual({
-      message: "Ordine senza utente (errore dati)",
+      message: "Non puoi eliminare questo ordine",
     });
   });
 
@@ -330,7 +345,7 @@ describe("Orders API", () => {
       expiresIn: "1h",
     });
 
-    mockedOrder.findById.mockRejectedValue(new Error("DB error"));
+    mockedOrderDynamo.get.mockRejectedValue(new Error("DB error"));
 
     const res = await request(app)
       .delete("/orders/123")
@@ -346,17 +361,20 @@ describe("Orders API", () => {
 
   describe("GET /orders/most_order", () => {
     it("dovrebbe restituire il piatto più ordinato", async () => {
-      mockedOrder.aggregate.mockResolvedValue([{ _id: "Pizza", count: 3 }]);
+      mockedOrderDynamo.__scanExec.mockResolvedValue([
+        { typeFood: "Pizza" },
+        { typeFood: "Pizza" },
+        { typeFood: "Pasta" },
+      ]);
 
       const res = await request(app).get("/orders/most_order");
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty("mostPopular");
-      expect(res.body).toHaveProperty("count");
+      expect(res.body).toEqual({ mostPopular: "Pizza", count: 2 });
     });
 
     it("404 se nessun ordine presente", async () => {
-      mockedOrder.aggregate.mockResolvedValue([]);
+      mockedOrderDynamo.__scanExec.mockResolvedValue([]);
 
       const res = await request(app).get("/orders/most_order");
 
@@ -365,12 +383,24 @@ describe("Orders API", () => {
     });
 
     it("500 se errore server", async () => {
-      mockedOrder.aggregate.mockRejectedValue(new Error("DB error"));
+      mockedOrderDynamo.__scanExec.mockRejectedValue(new Error("DB error"));
 
       const res = await request(app).get("/orders/most_order");
 
       expect(res.statusCode).toBe(500);
       expect(res.body).toEqual({ message: "Errore server" });
+    });
+
+    it("404 se ordini senza typeFood valido", async () => {
+      mockedOrderDynamo.__scanExec.mockResolvedValue([
+        { id: "1" },
+        { id: "2", typeFood: "" },
+      ]);
+
+      const res = await request(app).get("/orders/most_order");
+
+      expect(res.statusCode).toBe(404);
+      expect(res.body).toEqual({ message: "Nessun ordine trovato" });
     });
   });
 });

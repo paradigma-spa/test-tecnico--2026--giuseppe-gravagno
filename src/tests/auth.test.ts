@@ -1,27 +1,52 @@
 import request from "supertest";
 import app from "../app";
-import { User } from "../models/userModel";
+import { UserDynamo } from "../models/userModel";
+import * as bcrypt from "bcrypt";
 
 jest.mock("../models/userModel", () => {
-  const User = jest.fn().mockImplementation((data) => ({
-    ...data,
-    save: jest.fn().mockResolvedValue(data),
+  const queryExec = jest.fn();
+  const query = jest.fn().mockImplementation(() => ({
+    using: jest.fn().mockReturnValue({
+      eq: jest.fn().mockReturnValue({
+        exec: queryExec,
+      }),
+    }),
   }));
 
-  (User as any).findOne = jest.fn();
-
-  return { User };
+  return {
+    UserDynamo: {
+      query,
+      create: jest.fn(),
+      __queryExec: queryExec,
+    },
+  };
 });
 
-const mockedUser = User as unknown as jest.Mock & { findOne: jest.Mock };
+jest.mock("bcrypt", () => ({
+  hash: jest.fn(),
+  compare: jest.fn(),
+}));
+
+const mockedUserDynamo = UserDynamo as unknown as {
+  create: jest.Mock;
+  __queryExec: jest.Mock;
+};
+
+const mockedBcrypt = bcrypt as unknown as {
+  hash: jest.Mock;
+  compare: jest.Mock;
+};
 
 describe("Auth API", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedBcrypt.hash.mockResolvedValue("hashed-password");
+    mockedBcrypt.compare.mockResolvedValue(true);
   });
 
   it("POST /register → dovrebbe registrarmi", async () => {
-    mockedUser.findOne.mockResolvedValue(null);
+    mockedUserDynamo.__queryExec.mockResolvedValue({ count: 0 });
+    mockedUserDynamo.create.mockResolvedValue({});
 
     const res = await request(app).post("/auth/register").send({
       username: "test",
@@ -34,13 +59,7 @@ describe("Auth API", () => {
   });
 
   it("POST /register → dovrebbe registrarmi", async () => {
-
-    mockedUser.findOne.mockResolvedValue({
-      _id: "user-1",
-      username: "test",
-      email: "test@example.com",
-      password: "Password1!",
-    });
+    mockedUserDynamo.__queryExec.mockResolvedValue({ count: 1 });
 
     const res = await request(app).post("/auth/register").send({
       username: "test",
@@ -52,12 +71,16 @@ describe("Auth API", () => {
   });
 
   it("POST /login → dovrebbe restituire un token", async () => {
-    mockedUser.findOne.mockResolvedValue({
-      _id: "user-1",
-      username: "test",
-      email: "test@example.com",
-      password: "Password1!",
+    mockedUserDynamo.__queryExec.mockResolvedValue({
+      count: 1,
+      0: {
+        id: "user-1",
+        username: "test",
+        email: "test@example.com",
+        password: "hashed-password",
+      },
     });
+    mockedBcrypt.compare.mockResolvedValue(true);
 
     const res = await request(app).post("/auth/login").send({
       email: "test@example.com",
@@ -69,7 +92,7 @@ describe("Auth API", () => {
   });
 
   it("POST /login → credenziali sbagliate = 401", async () => {
-    mockedUser.findOne.mockResolvedValue(null);
+    mockedUserDynamo.__queryExec.mockResolvedValue({ count: 0 });
 
     const res = await request(app).post("/auth/login").send({
       email: "wrong@example.com",
@@ -77,5 +100,26 @@ describe("Auth API", () => {
     });
 
     expect(res.statusCode).toBe(401);
+  });
+
+  it("POST /login → password errata = 401", async () => {
+    mockedUserDynamo.__queryExec.mockResolvedValue({
+      count: 1,
+      0: {
+        id: "user-1",
+        username: "test",
+        email: "test@example.com",
+        password: "hashed-password",
+      },
+    });
+    mockedBcrypt.compare.mockResolvedValue(false);
+
+    const res = await request(app).post("/auth/login").send({
+      email: "test@example.com",
+      password: "PasswordSbagliata1!",
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body).toEqual({ message: "Credenziali non valide" });
   });
 });
