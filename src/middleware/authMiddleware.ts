@@ -1,6 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../config";
+import { getSecrets } from "../secret";
 import { body } from "express-validator";
 
 declare module "express-serve-static-core" {
@@ -12,7 +12,7 @@ declare module "express-serve-static-core" {
   }
 }
 
-export const verifyJWT = (req: Request, res: Response, next: NextFunction) => {
+export const verifyJWT = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -26,6 +26,7 @@ export const verifyJWT = (req: Request, res: Response, next: NextFunction) => {
       return res.status(401).json({ message: "Token mancante o malformato" });
     }
 
+    const { JWT_SECRET } = await getSecrets();
     const decoded: any = jwt.verify(token, JWT_SECRET);
 
     req.user = {

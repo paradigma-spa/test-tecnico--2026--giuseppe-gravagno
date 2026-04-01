@@ -1,9 +1,8 @@
 import { type Request, type Response } from "express";
-import { JWT_SECRET } from "../config";
 import jwt from "jsonwebtoken";
 import { UserDynamo } from "../models/userModel";
-import * as bcrypt from 'bcrypt';
-
+import * as bcrypt from "bcrypt";
+import { getSecrets } from "../secret";
 
 export const userLogin = async (req: Request, res: Response) => {
   try {
@@ -26,14 +25,23 @@ export const userLogin = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Credenziali non valide" });
     }
 
+    const secrets = await getSecrets();
+
+    if (!secrets.JWT_SECRET) {
+      return res
+        .status(500)
+        .json({ message: "JWT_SECRET non trovato nel secret" });
+    }
+
+    console.log("JWT_SECRET:", secrets.JWT_SECRET);
+
     const token = jwt.sign(
       { id: user!.id, username: user!.username },
-      JWT_SECRET,
+      secrets.JWT_SECRET,
       { expiresIn: "1h" },
     );
 
     res.json({ token });
-
   } catch (error) {
     res.status(500).json({ message: "Errore lato server" });
   }

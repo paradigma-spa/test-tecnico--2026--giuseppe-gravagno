@@ -5,7 +5,7 @@ const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayer";
 const bucketName = "giuseppe-gravagno-orders";
-const layerVersion = "4";
+const layerVersion = "5";
 const usersTableName = `${projectName}-${"${sls:stage}"}-users`;
 const ordersTableName = `${projectName}-${"${sls:stage}"}-orders`;
 
@@ -55,6 +55,11 @@ const serverlessConfig: AWS =
                     },
                   ],
                 },
+                {
+                  Effect: "Allow",
+                  Action: ["secretsmanager:GetSecretValue"],
+                  Resource: "*",
+                },
               ],
             },
           },
@@ -85,7 +90,6 @@ const serverlessConfig: AWS =
               LAYER_VERSION: layerVersion,
               USERS_TABLE: usersTableName,
               ORDERS_TABLE: ordersTableName,
-              JWT_SECRET: "${env:JWT_SECRET}",
             },
             events: [
               { http: { method: "any", path: "/" } },
