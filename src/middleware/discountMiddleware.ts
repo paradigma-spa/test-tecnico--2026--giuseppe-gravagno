@@ -7,5 +7,5 @@ export const validateDiscount = () => [
     body("couponValue").isNumeric().withMessage("Il coupon Value è un numero"),
     body("usageCount").isNumeric().withMessage("Lo usage Count è un numero"),
     body("enabled").isBoolean().withMessage("L'enabled è un booleano"),
-    body("expiresAt").isNumeric().withMessage("L'expired è un numero"),
+    body("expiresAt").isString().withMessage("L'expired è una stringa"),
 ]

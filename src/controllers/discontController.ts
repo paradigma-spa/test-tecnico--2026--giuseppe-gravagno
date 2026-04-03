@@ -21,6 +21,14 @@ export const createDiscount = async (req: Request, res: Response) => {
       enabled,
       expiresAt,
     } = req.body;
+
+    const parseDateExpiresAt = Date.parse(expiresAt);
+    if (isNaN(parseDateExpiresAt)) {
+      return res
+        .status(400)
+        .json({ message: "Formato data expiresAt non valido" });
+    }
+
     const newDiscount = new DiscountDynamo({
       userId,
       couponId,
@@ -28,7 +36,7 @@ export const createDiscount = async (req: Request, res: Response) => {
       couponValue,
       usageCount,
       enabled,
-      expiresAt,
+      expiresAt: parseDateExpiresAt,
     });
     await newDiscount.save();
     return res
@@ -71,7 +79,15 @@ export const updateDiscont = async (req: Request, res: Response) => {
     } = {};
     if (enabled !== undefined) updates.enabled = enabled;
     if (usageCount !== undefined) updates.usageCount = usageCount;
-    if (expiresAt !== undefined) updates.expiresAt = expiresAt;
+    if (expiresAt !== undefined) {
+      const parseDateExpiresAt = Date.parse(expiresAt);
+      if (isNaN(parseDateExpiresAt)) {
+        return res
+          .status(400)
+          .json({ message: "Formato data expiresAt non valido" });
+      }
+      updates.expiresAt = parseDateExpiresAt;
+    }
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ message: "Nessun campo da aggiornare" });

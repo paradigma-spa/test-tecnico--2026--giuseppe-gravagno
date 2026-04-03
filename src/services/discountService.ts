@@ -15,19 +15,16 @@ export const findValidCouponByCode = async (
   userId: string,
   couponCode: string,
 ) => {
-  const normalized = couponCode.trim();
+  const normalized = couponCode.trim().toLowerCase();
 
   const results = (await DiscountDynamo.scan("userId")
     .eq(userId)
-    .where("coupon")
-    .eq(normalized)
     .exec()) as unknown as CouponEntity[];
 
-  const found = results[0];
+  const found = results.find(
+    (item) => (item.coupon ?? "").trim().toLowerCase() === normalized,
+  );
   if (!found) return null;
-  if (!found.enabled) return null;
-  if (found.usageCount <= 0) return null;
-  if (found.expiresAt && found.expiresAt <= Date.now()) return null;
 
   return found;
 };
