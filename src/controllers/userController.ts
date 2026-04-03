@@ -11,6 +11,39 @@ export const allUsers = async (req: Request, res: Response) => {
   }
 };
 
+export const updateRole = async (req: Request, res: Response) => {
+  try {
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ message: "Non autorizzato" });
+    }
+
+    const { userId, newRole } = req.body as {
+      userId?: string;
+      newRole?: string;
+    };
+
+    if (!userId || !newRole) {
+      return res
+        .status(400)
+        .json({ message: "userId e newRole sono obbligatori" });
+    }
+
+    if (newRole !== "user" && newRole !== "admin") {
+      return res.status(400).json({ message: "newRole non valido" });
+    }
+
+    const targetUser = await UserDynamo.get(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    await UserDynamo.update(userId, { role: newRole });
+    return res.status(200).json({ message: `Ruolo aggiornato a ${newRole}` });
+  } catch (error) {
+    return res.status(500).json({ message: "Errore server" });
+  }
+};
+
 export const getTopCustomer = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate } = req.query;

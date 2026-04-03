@@ -14,6 +14,16 @@ const orderDynamoSchema = new dynamoose.Schema({
     type: Number,
     required: true,
   },
+  price: {
+    type: Number,
+    required: true,
+  },
+  couponId: {
+    type: String,
+  },
+  coupon: {
+    type: String,
+  },
   userId: {
     type: String,
     required: true,

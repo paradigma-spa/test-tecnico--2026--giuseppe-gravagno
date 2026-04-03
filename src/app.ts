@@ -6,6 +6,7 @@ import express, {
 import authRouter from "./routes/authRoutes";
 import orderRouter from "./routes/orderRoutes";
 import userRoutes from "./routes/userRoutes";
+import discountRouter from "./routes/discountRoutes";
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/auth", authRouter);
 app.use("/orders", orderRouter);
 app.use("/users", userRoutes);
+app.use("/discounts", discountRouter);
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error("Errore globale:", err.message);

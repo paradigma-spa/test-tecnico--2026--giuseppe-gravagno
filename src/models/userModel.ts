@@ -23,6 +23,9 @@ const userDynamoSchema = new dynamoose.Schema(
       type: String,
       required: true,
     },
+    role: {
+      type: String,
+    },
   },
   {
     timestamps: true,

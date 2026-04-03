@@ -8,11 +8,16 @@ declare module "express-serve-static-core" {
     user?: {
       _id: string;
       username: string;
+      role?: string;
     };
   }
 }
 
-export const verifyJWT = async (req: Request, res: Response, next: NextFunction) => {
+export const verifyJWT = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -32,6 +37,7 @@ export const verifyJWT = async (req: Request, res: Response, next: NextFunction)
     req.user = {
       _id: decoded.id,
       username: decoded.username,
+      role: decoded.role,
     };
 
     next();
@@ -63,3 +69,11 @@ export const validateLogin = [
       "La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero",
     ),
 ];
+
+export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
+  if (req.user && req.user.role === "admin") {
+    next();
+  } else {
+    res.status(403).json({ message: "Accesso negato" });
+  }
+};

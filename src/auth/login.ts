@@ -36,7 +36,7 @@ export const userLogin = async (req: Request, res: Response) => {
     console.log("JWT_SECRET:", secrets.JWT_SECRET);
 
     const token = jwt.sign(
-      { id: user!.id, username: user!.username },
+      { id: user!.id, username: user!.username, role: user!.role },
       secrets.JWT_SECRET,
       { expiresIn: "1h" },
     );

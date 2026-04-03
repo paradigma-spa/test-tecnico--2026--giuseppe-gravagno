@@ -1,6 +1,11 @@
 import { type Request, type Response } from "express";
 import { randomUUID } from "crypto";
 import { OrderDynamo } from "../models/orderModel";
+import {
+  applyCouponToPrice,
+  decrementCouponUsage,
+  findValidCouponByCode,
+} from "../services/discountService";
 
 export const getOrders = async (req: Request, res: Response) => {
   try {
@@ -13,22 +18,74 @@ export const getOrders = async (req: Request, res: Response) => {
 
 export const newOrder = async (req: Request, res: Response) => {
   try {
-    const { typeFood, quantity } = req.body;
+    const { typeFood, quantity, price, coupon } = req.body;
 
     if (!req.user) {
       return res.status(401).json({ message: "Non autenticato" });
+    }
+
+    if (coupon && String(coupon).trim() !== "") {
+      const ckeckCoupon = await findValidCouponByCode(
+        req.user._id,
+        String(coupon),
+      );
+
+      if (!ckeckCoupon) {
+        return res.status(404).json({ message: "Coupon non trovato" });
+      }
+
+      if (!ckeckCoupon.enabled) {
+        return res.status(400).json({ message: "Coupon disabilitato" });
+      }
+
+      if (ckeckCoupon.usageCount <= 0) {
+        return res.status(400).json({ message: "Coupon esaurito" });
+      }
+
+      const applyCoupon = await applyCouponToPrice(
+        price,
+        ckeckCoupon.couponValue,
+      );
+
+      const priceFinal = applyCoupon.priceFinal;
+      const discountApplied = applyCoupon.discountApplied;
+
+      await decrementCouponUsage(
+        req.user._id,
+        ckeckCoupon.couponId,
+        ckeckCoupon.usageCount,
+      );
+
+      await OrderDynamo.create({
+        id: randomUUID(),
+        typeFood,
+        quantity,
+        price: priceFinal,
+        coupon: ckeckCoupon.coupon,
+        couponId: ckeckCoupon.couponId,
+        userId: req.user._id,
+      });
+
+      return res.status(201).json({
+        message:
+          "Nuovo ordine creato correttamente con lo sconto di: " +
+          discountApplied,
+      });
     }
 
     await OrderDynamo.create({
       id: randomUUID(),
       typeFood,
       quantity,
+      price: Number(price ?? 0),
       userId: req.user._id,
     });
 
-    res.status(201).json({ message: "Nuovo ordine creato correttamente" });
+    return res
+      .status(201)
+      .json({ message: "Nuovo ordine creato correttamente" });
   } catch (error) {
-    res.status(500).json({ message: "Errore lato server" });
+    return res.status(500).json({ message: "Errore lato server" });
   }
 };
 

@@ -9,6 +9,7 @@ export const userRegister = async (req: Request, res: Response) => {
     const newUsername = req.body.username;
     const newEmail = req.body.email;
     const newPassword = req.body.password;
+    const role = "user";
 
     const existing = await UserDynamo.query("email")
       .using("EmailIndex")
@@ -35,6 +36,7 @@ export const userRegister = async (req: Request, res: Response) => {
       username: newUsername,
       email: newEmail,
       password: hashedPassword,
+      role: role,
     });
 
     return res.status(201).json({ message: "Utente creato" });

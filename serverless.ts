@@ -8,6 +8,7 @@ const bucketName = "giuseppe-gravagno-orders";
 const layerVersion = "5";
 const usersTableName = `${projectName}-${"${sls:stage}"}-users`;
 const ordersTableName = `${projectName}-${"${sls:stage}"}-orders`;
+const discountsTableName = `${projectName}-${"${sls:stage}"}-discounts`;
 
 const serverlessConfig: AWS =
   process.env.DEPLOY === "functions"
@@ -24,6 +25,7 @@ const serverlessConfig: AWS =
           environment: {
             USERS_TABLE: usersTableName,
             ORDERS_TABLE: ordersTableName,
+            DISCOUNTS_TABLE: discountsTableName,
           },
           iam: {
             role: {
@@ -51,6 +53,16 @@ const serverlessConfig: AWS =
                       "Fn::Join": [
                         "",
                         [{ "Fn::GetAtt": ["OrdersTable", "Arn"] }, "/index/*"],
+                      ],
+                    },
+                    { "Fn::GetAtt": ["DiscountsTable", "Arn"] },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          { "Fn::GetAtt": ["DiscountsTable", "Arn"] },
+                          "/index/*",
+                        ],
                       ],
                     },
                   ],
@@ -90,6 +102,7 @@ const serverlessConfig: AWS =
               LAYER_VERSION: layerVersion,
               USERS_TABLE: usersTableName,
               ORDERS_TABLE: ordersTableName,
+              DISCOUNTS_TABLE: discountsTableName,
             },
             events: [
               { http: { method: "any", path: "/" } },
@@ -132,6 +145,32 @@ const serverlessConfig: AWS =
                 GlobalSecondaryIndexes: [
                   {
                     IndexName: "UserOrdersIndex",
+                    KeySchema: [
+                      { AttributeName: "userId", KeyType: "HASH" },
+                      { AttributeName: "createdAt", KeyType: "RANGE" },
+                    ],
+                    Projection: { ProjectionType: "ALL" },
+                  },
+                ],
+              },
+            },
+            DiscountsTable: {
+              Type: "AWS::DynamoDB::Table",
+              Properties: {
+                TableName: discountsTableName,
+                BillingMode: "PAY_PER_REQUEST",
+                AttributeDefinitions: [
+                  { AttributeName: "userId", AttributeType: "S" },
+                  { AttributeName: "couponId", AttributeType: "S" },
+                  { AttributeName: "createdAt", AttributeType: "S" },
+                ],
+                KeySchema: [
+                  { AttributeName: "userId", KeyType: "HASH" },
+                  { AttributeName: "couponId", KeyType: "RANGE" },
+                ],
+                GlobalSecondaryIndexes: [
+                  {
+                    IndexName: "UserDiscountsIndex",
                     KeySchema: [
                       { AttributeName: "userId", KeyType: "HASH" },
                       { AttributeName: "createdAt", KeyType: "RANGE" },
