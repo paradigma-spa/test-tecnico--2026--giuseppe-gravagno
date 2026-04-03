@@ -1,5 +1,6 @@
 import { type Request, type Response } from "express";
 import { DiscountDynamo } from "../models/discountModel";
+import { randomUUID } from "crypto";
 
 export const getDiscount = async (req: Request, res: Response) => {
   try {
@@ -14,7 +15,6 @@ export const createDiscount = async (req: Request, res: Response) => {
   try {
     const {
       userId,
-      couponId,
       coupon,
       couponValue,
       usageCount,
@@ -29,14 +29,16 @@ export const createDiscount = async (req: Request, res: Response) => {
         .json({ message: "Formato data expiresAt non valido" });
     }
 
+    const parseDateExpiresAtSecond = parseDateExpiresAt / 1000;
+
     const newDiscount = new DiscountDynamo({
       userId,
-      couponId,
+      couponId : randomUUID(),
       coupon,
       couponValue,
       usageCount,
       enabled,
-      expiresAt: parseDateExpiresAt,
+      expiresAt: parseDateExpiresAtSecond,
     });
     await newDiscount.save();
     return res
@@ -86,7 +88,8 @@ export const updateDiscont = async (req: Request, res: Response) => {
           .status(400)
           .json({ message: "Formato data expiresAt non valido" });
       }
-      updates.expiresAt = parseDateExpiresAt;
+      const parseDateExpiresAtSecond = parseDateExpiresAt / 1000;
+      updates.expiresAt = parseDateExpiresAtSecond;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -133,7 +136,7 @@ export const deleteDiscount = async (req: Request, res: Response) => {
       couponId: coupon.couponId,
     });
 
-    return res.status(200).json({ message: "Coupon modificato correttamente" });
+    return res.status(200).json({ message: "Coupon eliminato correttamente" });
   } catch (error) {
     console.error("Errore deleteDiscount:", error);
     res.status(500).json({ message: "Errore interno server" });

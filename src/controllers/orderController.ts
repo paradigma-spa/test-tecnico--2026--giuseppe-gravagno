@@ -42,6 +42,13 @@ export const newOrder = async (req: Request, res: Response) => {
         return res.status(400).json({ message: "Coupon esaurito" });
       }
 
+      if (
+        ckeckCoupon.expiresAt &&
+        ckeckCoupon.expiresAt <= Math.floor(Date.now() / 1000)
+      ) {
+        return res.status(400).json({ message: "Coupon scaduto" });
+      }
+
       const applyCoupon = await applyCouponToPrice(
         price,
         ckeckCoupon.couponValue,
