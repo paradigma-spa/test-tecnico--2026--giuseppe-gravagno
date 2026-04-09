@@ -1,0 +1,33 @@
+{
+  "name": "prova_paradigma",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsc & node ./dist/server.js",
+    "test": "jest",
+    "deploy:layer": "cross-env DEPLOY= LayerVersion=1 serverless deploy",
+    "deploy:functions:dev": "cross-env DEPLOY=functions serverless deploy --stage dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dynamoose": "^4.1.5"
+  },
+  "devDependencies": {
+    "@serverless/typescript": "^4.30.0",
+    "@types/node": "^25.5.0",
+    "cross-env": "^10.1.0",
+    "serverless": "^3.40.0",
+    "serverless-webpack": "^5.15.3",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.6",
+    "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "webpack": "^5.105.3",
+    "webpack-cli": "^6.0.1",
+    "webpack-node-externals": "^3.0.0"
+  }
+}
