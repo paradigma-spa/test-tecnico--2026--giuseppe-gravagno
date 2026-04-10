@@ -24,6 +24,9 @@ const serverlessConfig: AWS =
           environment: {
             DISCOUNTS_TABLE: discountsTableName,
             ORDERS_TABLE: ordersTableName,
+            EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
+            EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
+            EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
           },
           iam: {
             role: {
@@ -62,6 +65,11 @@ const serverlessConfig: AWS =
                     },
                   ],
                 },
+                {
+                  Effect: "Allow",
+                  Action: ["events:PutTargets"],
+                  Resource: "*",
+                },
               ],
             },
           },
@@ -83,6 +91,9 @@ const serverlessConfig: AWS =
             environment: {
               DISCOUNTS_TABLE: discountsTableName,
               ORDERS_TABLE: ordersTableName,
+              EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
+              EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
+              EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
             },
             layers: [
               `arn:aws:lambda:${region}:${accountId}:layer:${layerName}:${layerVersion}`,
