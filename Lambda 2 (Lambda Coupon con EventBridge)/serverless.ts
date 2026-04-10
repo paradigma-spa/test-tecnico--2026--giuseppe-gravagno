@@ -5,7 +5,7 @@ const region = "eu-south-1";
 const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayerCoupons";
-const layerVersion = "1";
+const layerVersion = "2";
 const discountsTableName = `order-api-${"${sls:stage}"}-discounts`;
 const ordersTableName = `order-api-${"${sls:stage}"}-orders`;
 
@@ -87,7 +87,8 @@ const serverlessConfig: AWS =
         },
         functions: {
           couponHandler: {
-            handler: "src/server.handler",
+            handler:
+              "src/domains/coupon/handlers/couponEventBridgeHandler.handler",
             environment: {
               DISCOUNTS_TABLE: discountsTableName,
               ORDERS_TABLE: ordersTableName,
