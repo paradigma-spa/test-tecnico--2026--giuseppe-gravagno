@@ -5,7 +5,7 @@ const region = "eu-south-1";
 const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayerCoupons";
-const layerVersion = "2";
+const layerVersion = "3";
 const discountsTableName = `order-api-${"${sls:stage}"}-discounts`;
 const ordersTableName = `order-api-${"${sls:stage}"}-orders`;
 
@@ -42,6 +42,11 @@ const serverlessConfig: AWS =
                 },
                 {
                   Effect: "Allow",
+                  Action: ["ses:SendEmail", "ses:SendRawEmail"],
+                  Resource: "*",
+                },
+                {
+                  Effect: "Allow",
                   Action: [
                     "dynamodb:GetItem",
                     "dynamodb:PutItem",
@@ -62,6 +67,20 @@ const serverlessConfig: AWS =
                     },
                     {
                       "Fn::Sub": `arn:aws:dynamodb:${region}:${accountId}:table/${ordersTableName}/index/*`,
+                    },
+                  ],
+                },
+                {
+                  Effect: "Allow",
+                  Action: [
+                    "dynamodb:DescribeStream",
+                    "dynamodb:GetRecords",
+                    "dynamodb:GetShardIterator",
+                    "dynamodb:ListStreams",
+                  ],
+                  Resource: [
+                    {
+                      "Fn::Sub": `arn:aws:dynamodb:${region}:${accountId}:table/${ordersTableName}/stream/*`,
                     },
                   ],
                 },
@@ -95,9 +114,33 @@ const serverlessConfig: AWS =
               EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
               EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
               EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
+              SES_FROM_EMAIL: "${env:SES_FROM_EMAIL, ''}",
+              SES_TO_EMAIL: "${env:SES_TO_EMAIL, ''}",
             },
             layers: [
               `arn:aws:lambda:${region}:${accountId}:layer:${layerName}:${layerVersion}`,
+            ],
+          },
+          orderEmailStreamHandler: {
+            handler:
+              "src/domains/orders-email/handler/emailStreamsHandler.handler",
+            environment: {
+              ORDERS_TABLE: ordersTableName,
+              SES_FROM_EMAIL: "${env:SES_FROM_EMAIL, ''}",
+              SES_TO_EMAIL: "${env:SES_TO_EMAIL, ''}",
+            },
+            layers: [
+              `arn:aws:lambda:${region}:${accountId}:layer:${layerName}:${layerVersion}`,
+            ],
+            events: [
+              {
+                stream: {
+                  type: "dynamodb",
+                  arn: "arn:aws:dynamodb:eu-south-1:847041281071:table/order-api-dev-orders/stream/2026-04-14T06:43:34.645", //solo per il momento, se attivo e disattivo cambia l'indirizzo
+                  batchSize: 5,
+                  startingPosition: "LATEST",
+                },
+              },
             ],
           },
         },

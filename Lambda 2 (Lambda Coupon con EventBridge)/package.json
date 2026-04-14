@@ -14,10 +14,13 @@
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-eventbridge": "^3.1025.0",
+    "@aws-sdk/client-ses": "^3.1029.0",
+    "@aws-sdk/util-dynamodb": "^3.996.2",
     "dynamoose": "^4.1.5"
   },
   "devDependencies": {
     "@serverless/typescript": "^4.30.0",
+    "@types/aws-lambda": "^8.10.161",
     "@types/node": "^25.5.0",
     "cross-env": "^10.1.0",
     "serverless": "^3.40.0",

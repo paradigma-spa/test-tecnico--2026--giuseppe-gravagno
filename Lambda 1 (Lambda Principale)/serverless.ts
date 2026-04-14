@@ -136,6 +136,9 @@ const serverlessConfig: AWS =
               Properties: {
                 TableName: ordersTableName,
                 BillingMode: "PAY_PER_REQUEST",
+                StreamSpecification: {
+                  StreamViewType: "NEW_IMAGE",
+                },
                 AttributeDefinitions: [
                   { AttributeName: "id", AttributeType: "S" },
                   { AttributeName: "userId", AttributeType: "S" },
