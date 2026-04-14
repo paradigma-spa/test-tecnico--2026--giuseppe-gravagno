@@ -25,7 +25,6 @@ export const handler = async (event: unknown) => {
   try {
     await updateRuleTargetInputForNextInvocation(payloadToCreate);
   } catch (error) {
-    // Non bloccare la creazione del coupon se update target fallisce.
     console.error("Errore aggiornando il target EventBridge", error);
   }
 

@@ -1,18 +1,20 @@
-import { EventPayload } from "../types/eventPayload";
+import { EventPayload } from "../types/couponEventPayload";
+
+const isObjectPayload = (value: unknown): value is EventPayload => {
+  return !!value && typeof value === "object";
+};
 
 export const readEventPayload = (event: unknown): EventPayload => {
-  if (!event || typeof event !== "object") {
+  if (!isObjectPayload(event)) {
     return {};
   }
 
   if ("detail" in event) {
     const detail = (event as { detail?: unknown }).detail;
-    if (detail && typeof detail === "object") {
-      return detail as EventPayload;
-    }
+    return isObjectPayload(detail) ? detail : {};
   }
 
-  return event as EventPayload;
+  return event;
 };
 
 export const readUserIdFromPayload = (payload: EventPayload): string => {

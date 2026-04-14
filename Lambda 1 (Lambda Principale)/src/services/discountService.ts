@@ -1,4 +1,3 @@
-// src/services/discountService.ts
 import { DiscountDynamo } from "../models/discountModel";
 
 type CouponEntity = {

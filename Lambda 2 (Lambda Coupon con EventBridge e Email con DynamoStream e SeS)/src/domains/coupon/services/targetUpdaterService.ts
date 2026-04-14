@@ -2,7 +2,6 @@ import {
   EventBridgeClient,
   PutTargetsCommand,
 } from "@aws-sdk/client-eventbridge";
-import { EventPayload } from "../types/eventPayload";
 import { getLastUserIdFromOrders } from "../../orders-email/services/orderLookupService";
 
 const eventBridgeClient = new EventBridgeClient({
@@ -10,8 +9,8 @@ const eventBridgeClient = new EventBridgeClient({
 });
 
 export const updateRuleTargetInputForNextInvocation = async (
-  payload: EventPayload,
-): Promise<void> => {
+  payload: Record<string, unknown>,
+) => {
   const ruleName = (process.env.EVENTBRIDGE_RULE_NAME || "").trim();
   const targetId = (process.env.EVENTBRIDGE_TARGET_ID || "").trim();
   const targetArn = (process.env.EVENTBRIDGE_TARGET_ARN || "").trim();
@@ -31,7 +30,7 @@ export const updateRuleTargetInputForNextInvocation = async (
     return;
   }
 
-  const nextPayload: EventPayload = {
+  const nextPayload: Record<string, unknown> = {
     ...payload,
     userId: nextUserId,
   };

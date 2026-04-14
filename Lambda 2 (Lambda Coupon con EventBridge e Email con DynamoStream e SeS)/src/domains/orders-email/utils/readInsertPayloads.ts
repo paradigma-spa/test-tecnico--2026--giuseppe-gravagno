@@ -14,7 +14,7 @@ export const readInsertPayloads = (
       if (!image) return null;
 
       return unmarshall(
-        image as unknown as Record<string, never>,
+        image as Record<string, never>,
       ) as OrderInsertPayload;
     })
     .filter((item): item is OrderInsertPayload => item !== null);

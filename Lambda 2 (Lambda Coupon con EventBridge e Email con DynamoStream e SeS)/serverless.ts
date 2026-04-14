@@ -105,9 +105,9 @@ const serverlessConfig: AWS =
           patterns: [".webpack/**", "!node_modules/**", "!layer/**"],
         },
         functions: {
-          couponHandler: {
+          orderCouponEmailHandler: {
             handler:
-              "src/domains/coupon/handlers/couponEventBridgeHandler.handler",
+              "src/mainHandler.handler",
             environment: {
               DISCOUNTS_TABLE: discountsTableName,
               ORDERS_TABLE: ordersTableName,
@@ -120,23 +120,11 @@ const serverlessConfig: AWS =
             layers: [
               `arn:aws:lambda:${region}:${accountId}:layer:${layerName}:${layerVersion}`,
             ],
-          },
-          orderEmailStreamHandler: {
-            handler:
-              "src/domains/orders-email/handler/emailStreamsHandler.handler",
-            environment: {
-              ORDERS_TABLE: ordersTableName,
-              SES_FROM_EMAIL: "${env:SES_FROM_EMAIL, ''}",
-              SES_TO_EMAIL: "${env:SES_TO_EMAIL, ''}",
-            },
-            layers: [
-              `arn:aws:lambda:${region}:${accountId}:layer:${layerName}:${layerVersion}`,
-            ],
             events: [
               {
                 stream: {
                   type: "dynamodb",
-                  arn: "arn:aws:dynamodb:eu-south-1:847041281071:table/order-api-dev-orders/stream/2026-04-14T06:43:34.645", //solo per il momento, se attivo e disattivo cambia l'indirizzo
+                  arn: "${env:ORDERS_STREAM_ARN}",
                   batchSize: 5,
                   startingPosition: "LATEST",
                 },

@@ -16,6 +16,106 @@ API REST serverless su AWS Lambda + API Gateway per:
 - DynamoDB (via Dynamoose)
 - JWT per autenticazione
 
+## Architettura
+
+### Entry point
+
+- `src/server.ts`
+  - carica le variabili ambiente con `dotenv`
+  - espone l'app Express tramite `serverless-http`
+
+- `src/app.ts`
+  - inizializza middleware e routing principali
+
+### Struttura logica
+
+- `src/auth`
+  - login e registrazione
+- `src/controllers`
+  - logica applicativa delle rotte
+- `src/routes`
+  - definizione endpoint HTTP
+- `src/middleware`
+  - autenticazione JWT, autorizzazioni e validazioni
+- `src/models`
+  - modelli Dynamoose per utenti, ordini e coupon
+- `src/services`
+  - servizi applicativi di supporto
+
+## Infrastruttura
+
+La Lambda e' definita in `serverless.ts` come una singola funzione HTTP:
+
+- nome function: `lambda`
+- handler: `src/server.handler`
+- trigger: API Gateway (`/` e `/{proxy+}`)
+
+Le tabelle DynamoDB vengono create nello stack:
+
+1. `UsersTable`
+2. `OrdersTable`
+3. `DiscountsTable`
+
+### Nota su DynamoDB Streams
+
+La tabella ordini (`OrdersTable`) espone anche DynamoDB Streams con:
+
+- `StreamViewType: NEW_IMAGE`
+
+Questa configurazione serve per integrare Lambda 2, che ascolta i nuovi ordini e invia mail tramite SES.
+
+## Variabili ambiente
+
+Le variabili principali esposte alla funzione sono:
+
+- `USERS_TABLE`
+- `ORDERS_TABLE`
+- `DISCOUNTS_TABLE`
+
+Per il deploy locale/dev conviene avere anche un file `.env` coerente con lo stage usato.
+
+## Permessi IAM
+
+La Lambda ha permessi per:
+
+1. accesso DynamoDB su utenti, ordini e coupon
+2. accesso agli indici GSI delle tre tabelle
+3. lettura secret da AWS Secrets Manager
+
+## Deploy
+
+I comandi disponibili nel progetto sono:
+
+### Installazione
+
+```bash
+npm install
+```
+
+### Test
+
+```bash
+npm test
+```
+
+### Coverage
+
+```bash
+npm run test:coverage
+```
+
+### Deploy layer
+
+```bash
+npm run deploy:layer
+```
+
+### Deploy funzioni (stage dev)
+
+```bash
+npm run deploy:functions:dev
+```
+
 ## Avvio e Deploy
 
 ### Installazione
