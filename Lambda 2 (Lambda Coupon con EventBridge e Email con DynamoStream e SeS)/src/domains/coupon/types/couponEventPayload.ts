@@ -6,3 +6,5 @@ export type DiscountInput = {
   enabled: boolean;
   expiresAt: number | undefined;
 };
+
+export type EventPayload = Partial<DiscountInput>;

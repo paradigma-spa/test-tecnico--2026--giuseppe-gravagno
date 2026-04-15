@@ -80,6 +80,9 @@ const serverlessConfig: AWS =
                   ],
                   Resource: [
                     {
+                      "Fn::Sub": `arn:aws:dynamodb:${region}:${accountId}:table/${discountsTableName}/stream/*`,
+                    },
+                    {
                       "Fn::Sub": `arn:aws:dynamodb:${region}:${accountId}:table/${ordersTableName}/stream/*`,
                     },
                   ],
@@ -106,8 +109,7 @@ const serverlessConfig: AWS =
         },
         functions: {
           orderCouponEmailHandler: {
-            handler:
-              "src/mainHandler.handler",
+            handler: "src/mainHandler.handler",
             environment: {
               DISCOUNTS_TABLE: discountsTableName,
               ORDERS_TABLE: ordersTableName,
@@ -121,6 +123,14 @@ const serverlessConfig: AWS =
               `arn:aws:lambda:${region}:${accountId}:layer:${layerName}:${layerVersion}`,
             ],
             events: [
+              {
+                stream: {
+                  type: "dynamodb",
+                  arn: "${env:DISCOUNTS_STREAM_ARN}",
+                  batchSize: 5,
+                  startingPosition: "LATEST",
+                },
+              },
               {
                 stream: {
                   type: "dynamodb",
