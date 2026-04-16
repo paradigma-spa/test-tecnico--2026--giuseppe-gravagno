@@ -3,6 +3,8 @@ import type { OrderInsertPayload } from "../types/OrderInsertPayload";
 import puppeteer from "puppeteer-core";
 import nodemailer from "nodemailer";
 const chromium = require("@sparticuz/chromium");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const s3Client = new S3Client();
 
 export const sendOrderMail = async (order: OrderInsertPayload) => {
   const from = process.env.SES_FROM_EMAIL;
@@ -52,6 +54,18 @@ export const sendOrderMail = async (order: OrderInsertPayload) => {
   } finally {
     await browser.close();
   }
+
+  const command = new PutObjectCommand({
+    Bucket: process.env.PDF_BUCKET_NAME!,
+    Key: `ordine_${order?.id}.pdf`,
+    Body: pdfBuffer,
+    ContentType: "application/pdf",
+    Metadata: {
+      "order-id": order?.id,
+    },
+  });
+
+  await s3Client.send(command);
 
   await transporter.sendMail({
     from,

@@ -5,7 +5,7 @@ const region = "eu-south-1";
 const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayerCoupons";
-const layerVersion = "7";
+const layerVersion = "8";
 const discountsTableName = `order-api-${"${sls:stage}"}-discounts`;
 const ordersTableName = `order-api-${"${sls:stage}"}-orders`;
 const bucketName = "order-bill-s3";
@@ -25,6 +25,7 @@ const serverlessConfig: AWS =
           environment: {
             DISCOUNTS_TABLE: discountsTableName,
             ORDERS_TABLE: ordersTableName,
+            PDF_BUCKET_NAME: bucketName,
             EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
             EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
             EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
@@ -97,6 +98,23 @@ const serverlessConfig: AWS =
                   Action: ["events:PutTargets"],
                   Resource: "*",
                 },
+                {
+                  Effect: "Allow",
+                  Action: [
+                    "s3:ListBucket",
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:DeleteObject",
+                  ],
+                  Resource: [
+                    {
+                      "Fn::Sub": `arn:aws:s3:::${bucketName}`,
+                    },
+                    {
+                      "Fn::Sub": `arn:aws:s3:::${bucketName}/*`,
+                    },
+                  ],
+                },
               ],
             },
           },
@@ -120,6 +138,7 @@ const serverlessConfig: AWS =
             environment: {
               DISCOUNTS_TABLE: discountsTableName,
               ORDERS_TABLE: ordersTableName,
+              PDF_BUCKET_NAME: bucketName,
               EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
               EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
               EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
