@@ -5,9 +5,10 @@ const region = "eu-south-1";
 const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayerCoupons";
-const layerVersion = "3";
+const layerVersion = "7";
 const discountsTableName = `order-api-${"${sls:stage}"}-discounts`;
 const ordersTableName = `order-api-${"${sls:stage}"}-orders`;
+const bucketName = "order-bill-s3";
 
 const serverlessConfig: AWS =
   process.env.DEPLOY === "functions"
@@ -42,7 +43,11 @@ const serverlessConfig: AWS =
                 },
                 {
                   Effect: "Allow",
-                  Action: ["ses:SendEmail", "ses:SendRawEmail"],
+                  Action: [
+                    "ses:SendEmail",
+                    "ses:SendRawEmail",
+                    "sesv2:SendEmail",
+                  ],
                   Resource: "*",
                 },
                 {
@@ -110,6 +115,8 @@ const serverlessConfig: AWS =
         functions: {
           orderCouponEmailHandler: {
             handler: "src/mainHandler.handler",
+            //memorySize: 1024,
+            //timeout: 30,
             environment: {
               DISCOUNTS_TABLE: discountsTableName,
               ORDERS_TABLE: ordersTableName,
