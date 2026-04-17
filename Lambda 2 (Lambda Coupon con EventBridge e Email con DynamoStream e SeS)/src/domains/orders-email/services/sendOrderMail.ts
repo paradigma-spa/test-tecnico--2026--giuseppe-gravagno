@@ -37,6 +37,8 @@ export const sendOrderMail = async (order: OrderInsertPayload) => {
       <html>
         <body style="font-family: sans-serif; padding: 20px;">
           <h1>Riepilogo Ordine #${order?.id}</h1>
+          <br>
+          <br>
           <p><strong>User ID:</strong> ${order?.userId}</p>
           <p><strong>Cibo:</strong> ${order?.typeFood}</p>
           <p><strong>Prezzo:</strong> €${order?.price}</p>
@@ -57,7 +59,7 @@ export const sendOrderMail = async (order: OrderInsertPayload) => {
 
   const command = new PutObjectCommand({
     Bucket: process.env.PDF_BUCKET_NAME!,
-    Key: `ordine_${order?.id}.pdf`,
+    Key: `${order?.userId}/ordine_${order?.id}.pdf`,
     Body: pdfBuffer,
     ContentType: "application/pdf",
     Metadata: {
