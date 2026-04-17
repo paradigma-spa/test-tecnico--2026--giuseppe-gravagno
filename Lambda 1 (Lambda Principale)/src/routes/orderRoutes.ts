@@ -5,6 +5,7 @@ import {
   deleteOrder,
   getMostPopularOrder,
   getMyOrder,
+  getOrderBills,
   getOrders,
   newOrder,
   updateOrder,
@@ -29,5 +30,6 @@ router.post("/", verifyJWT, checkValidation, newOrder);
 router.patch("/:id", verifyJWT, checkValidation, updateOrder);
 router.delete("/:id", verifyJWT, checkValidation, deleteOrder);
 router.get("/most_order", checkValidation, getMostPopularOrder);
+router.get("/bills",verifyJWT, checkValidation, getOrderBills)
 
 export default router;

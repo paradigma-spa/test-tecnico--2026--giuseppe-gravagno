@@ -6,6 +6,12 @@ import {
   decrementCouponUsage,
   findValidCouponByCode,
 } from "../services/discountService";
+import {
+  S3Client,
+  ListObjectsV2Command,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const getOrders = async (req: Request, res: Response) => {
   try {
@@ -225,3 +231,46 @@ export const getMostPopularOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Errore server" });
   }
 };
+
+export const getOrderBills = async (req: Request, res: Response) => {
+  try {
+    const s3Client = new S3Client({ region: "eu-south-1" });
+
+    const personalBills = new ListObjectsV2Command({
+      Bucket: process.env.BUCKET_NAME,
+      Prefix: `${req.user?._id}/`,
+    });
+
+    const data = s3Client.send(personalBills);
+
+    if (!(await data).Contents) {
+      return res
+        .status(404)
+        .json({ message: "Non è stato trovato alcun dato per il tuo user ID" });
+    }
+
+    const billsMap = (await data).Contents?.map(async (file) => {
+      const getPersonalBills = new GetObjectCommand({
+        Bucket: process.env.BUCKET_NAME,
+        Key: file.Key,
+      });
+
+      const getPresignedLink = await getSignedUrl(s3Client, getPersonalBills, {
+        expiresIn: 60,
+      });
+
+      return {
+        name: file.Key?.split("/").pop(),
+        url: getPresignedLink,
+        expiresIn: 60,
+      };
+    });
+
+    const promise = await Promise.all(billsMap!);
+
+    return res.status(200).json({ bills: promise });
+  } catch (error) {
+    return res.status(500).json({ message: "Errore lato server" });
+  }
+};
+

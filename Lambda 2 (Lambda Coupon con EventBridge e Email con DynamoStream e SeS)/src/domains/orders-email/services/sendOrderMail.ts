@@ -4,6 +4,7 @@ import puppeteer from "puppeteer-core";
 import nodemailer from "nodemailer";
 const chromium = require("@sparticuz/chromium");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+
 const s3Client = new S3Client();
 
 export const sendOrderMail = async (order: OrderInsertPayload) => {

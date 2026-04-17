@@ -14,7 +14,9 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.1031.0",
 		"@aws-sdk/client-secrets-manager": "^3.1020.0",
+		"@aws-sdk/s3-request-presigner": "^3.1031.0",
 		"@types/bcrypt": "^6.0.0",
 		"@types/express": "^5.0.6",
 		"bcrypt": "^6.0.0",

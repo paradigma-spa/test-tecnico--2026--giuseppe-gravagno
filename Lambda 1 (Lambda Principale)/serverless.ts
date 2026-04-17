@@ -4,7 +4,7 @@ const region = "eu-south-1";
 const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayer";
-const bucketName = "giuseppe-gravagno-orders";
+const bucketName = "order-bill-s3";
 const layerVersion = "5";
 const usersTableName = `${projectName}-${"${sls:stage}"}-users`;
 const ordersTableName = `${projectName}-${"${sls:stage}"}-orders`;
@@ -26,6 +26,7 @@ const serverlessConfig: AWS =
             USERS_TABLE: usersTableName,
             ORDERS_TABLE: ordersTableName,
             DISCOUNTS_TABLE: discountsTableName,
+            BUCKET_NAME : "${env:BUCKET_NAME, ''}",
           },
           iam: {
             role: {
@@ -71,6 +72,23 @@ const serverlessConfig: AWS =
                   Effect: "Allow",
                   Action: ["secretsmanager:GetSecretValue"],
                   Resource: "*",
+                },
+                {
+                  Effect: "Allow",
+                  Action: [
+                    "s3:ListBucket",
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:DeleteObject",
+                  ],
+                  Resource: [
+                    {
+                      "Fn::Sub": `arn:aws:s3:::${bucketName}`,
+                    },
+                    {
+                      "Fn::Sub": `arn:aws:s3:::${bucketName}/*`,
+                    },
+                  ],
                 },
               ],
             },
