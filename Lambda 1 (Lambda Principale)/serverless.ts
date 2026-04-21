@@ -5,7 +5,7 @@ const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayer";
 const bucketName = "order-bill-s3";
-const layerVersion = "5";
+const layerVersion = "8";
 const usersTableName = `${projectName}-${"${sls:stage}"}-users`;
 const ordersTableName = `${projectName}-${"${sls:stage}"}-orders`;
 const discountsTableName = `${projectName}-${"${sls:stage}"}-discounts`;
@@ -26,7 +26,8 @@ const serverlessConfig: AWS =
             USERS_TABLE: usersTableName,
             ORDERS_TABLE: ordersTableName,
             DISCOUNTS_TABLE: discountsTableName,
-            BUCKET_NAME : "${env:BUCKET_NAME, ''}",
+            BUCKET_NAME: "${env:BUCKET_NAME, ''}",
+            ORDER_EMAIL_QUEUE_URL: "${env:ORDER_EMAIL_QUEUE_URL, ''}",
           },
           iam: {
             role: {
@@ -76,6 +77,15 @@ const serverlessConfig: AWS =
                 {
                   Effect: "Allow",
                   Action: [
+                    "sqs:SendMessage",
+                    "sqs:ReceiveMessage",
+                    "sqs:DeleteMessage",
+                  ],
+                  Resource: `arn:aws:sqs:${region}:${accountId}:orderQueue`,
+                },
+                {
+                  Effect: "Allow",
+                  Action: [
                     "s3:ListBucket",
                     "s3:GetObject",
                     "s3:PutObject",
@@ -121,6 +131,7 @@ const serverlessConfig: AWS =
               USERS_TABLE: usersTableName,
               ORDERS_TABLE: ordersTableName,
               DISCOUNTS_TABLE: discountsTableName,
+              ORDER_EMAIL_QUEUE_URL: "${env:ORDER_EMAIL_QUEUE_URL, ''}",
             },
             events: [
               { http: { method: "any", path: "/" } },

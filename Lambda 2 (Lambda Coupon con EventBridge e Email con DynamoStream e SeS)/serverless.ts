@@ -5,7 +5,7 @@ const region = "eu-south-1";
 const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayerCoupons";
-const layerVersion = "8";
+const layerVersion = "9";
 const discountsTableName = `order-api-${"${sls:stage}"}-discounts`;
 const ordersTableName = `order-api-${"${sls:stage}"}-orders`;
 const bucketName = "order-bill-s3";
@@ -26,6 +26,7 @@ const serverlessConfig: AWS =
             DISCOUNTS_TABLE: discountsTableName,
             ORDERS_TABLE: ordersTableName,
             PDF_BUCKET_NAME: bucketName,
+            ORDER_EMAIL_QUEUE_ARN: "${env:ORDER_EMAIL_QUEUE_ARN, ''}",
             EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
             EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
             EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
@@ -50,6 +51,16 @@ const serverlessConfig: AWS =
                     "sesv2:SendEmail",
                   ],
                   Resource: "*",
+                },
+                {
+                  Effect: "Allow",
+                  Action: [
+                    "sqs:SendMessage",
+                    "sqs:ReceiveMessage",
+                    "sqs:DeleteMessage",
+                    "sqs:GetQueueAttributes",
+                  ],
+                  Resource: `arn:aws:sqs:${region}:${accountId}:orderQueue`,
                 },
                 {
                   Effect: "Allow",
@@ -139,6 +150,7 @@ const serverlessConfig: AWS =
               DISCOUNTS_TABLE: discountsTableName,
               ORDERS_TABLE: ordersTableName,
               PDF_BUCKET_NAME: bucketName,
+              ORDER_EMAIL_QUEUE_ARN: "${env:ORDER_EMAIL_QUEUE_ARN, ''}",
               EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
               EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
               EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
@@ -163,6 +175,12 @@ const serverlessConfig: AWS =
                   arn: "${env:ORDERS_STREAM_ARN}",
                   batchSize: 5,
                   startingPosition: "LATEST",
+                },
+              },
+              {
+                sqs: {
+                  arn: `arn:aws:sqs:${region}:${accountId}:orderQueue`,
+                  batchSize: 5,
                 },
               },
             ],

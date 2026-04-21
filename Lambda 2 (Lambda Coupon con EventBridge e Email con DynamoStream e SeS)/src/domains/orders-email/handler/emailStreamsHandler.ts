@@ -6,7 +6,7 @@ export const handler = async (event: DynamoDBStreamEvent) => {
   const orders = readInsertPayloads(event);
 
   for (const order of orders) {
-    await sendOrderMail(order);
+    await sendOrderMail({ payload: order });
   }
 
   return {

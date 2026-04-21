@@ -1,5 +1,5 @@
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
-import type { OrderInsertPayload } from "../types/OrderInsertPayload";
+import type { OrderEmailMessage } from "../types/OrderEmailMessage";
 import puppeteer from "puppeteer-core";
 import nodemailer from "nodemailer";
 const chromium = require("@sparticuz/chromium");
@@ -7,9 +7,10 @@ const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
 const s3Client = new S3Client();
 
-export const sendOrderMail = async (order: OrderInsertPayload) => {
+export const sendOrderMail = async (message: OrderEmailMessage) => {
+  const order = message.payload;
   const from = process.env.SES_FROM_EMAIL;
-  const to = process.env.SES_TO_EMAIL;
+  const to = message.toEmail || process.env.SES_TO_EMAIL;
 
   if (!from || !to) {
     throw new Error("SES_FROM_EMAIL o SES_TO_EMAIL non configurate");
@@ -73,7 +74,7 @@ export const sendOrderMail = async (order: OrderInsertPayload) => {
   await transporter.sendMail({
     from,
     to,
-    subject: "Nuovo ordine ricevuto",
+    subject: message.subject || "Nuovo ordine ricevuto",
     text: `Grazie per l'ordine effettuato! ID: ${order?.id}`,
     attachments: [
       {

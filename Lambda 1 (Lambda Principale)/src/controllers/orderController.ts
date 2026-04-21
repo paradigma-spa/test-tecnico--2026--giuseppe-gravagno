@@ -12,6 +12,7 @@ import {
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { enqueueOrderEmail } from "../services/sqsService";
 
 export const getOrders = async (req: Request, res: Response) => {
   try {
@@ -69,7 +70,7 @@ export const newOrder = async (req: Request, res: Response) => {
         ckeckCoupon.usageCount,
       );
 
-      await OrderDynamo.create({
+      const orderData = {
         id: randomUUID(),
         typeFood,
         quantity,
@@ -77,6 +78,21 @@ export const newOrder = async (req: Request, res: Response) => {
         coupon: ckeckCoupon.coupon,
         couponId: ckeckCoupon.couponId,
         userId: req.user._id,
+      };
+
+      const savedOrder = await OrderDynamo.create(orderData);
+
+      await enqueueOrderEmail({
+        subject: "Nuovo ordine ricevuto",
+        template: "order-confirmation",
+        payload: {
+          id: orderData.id,
+          userId: orderData.userId,
+          typeFood: orderData.typeFood,
+          quantity: orderData.quantity,
+          price: orderData.price,
+          createdAt: savedOrder.createdAt,
+        },
       });
 
       return res.status(201).json({
@@ -86,12 +102,27 @@ export const newOrder = async (req: Request, res: Response) => {
       });
     }
 
-    await OrderDynamo.create({
+    const orderData = {
       id: randomUUID(),
       typeFood,
       quantity,
       price: Number(price ?? 0),
       userId: req.user._id,
+    };
+
+    const savedOrder = await OrderDynamo.create(orderData);
+
+    await enqueueOrderEmail({
+      subject: "Nuovo ordine ricevuto",
+      template: "order-confirmation",
+      payload: {
+        id: orderData.id,
+        userId: orderData.userId,
+        typeFood: orderData.typeFood,
+        quantity: orderData.quantity,
+        price: orderData.price,
+        createdAt: savedOrder.createdAt,
+      },
     });
 
     return res
@@ -273,4 +304,3 @@ export const getOrderBills = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Errore lato server" });
   }
 };
-
