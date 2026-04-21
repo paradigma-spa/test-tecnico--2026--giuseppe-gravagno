@@ -169,14 +169,14 @@ const serverlessConfig: AWS =
                   startingPosition: "LATEST",
                 },
               },
-              {
+              /*{
                 stream: {
                   type: "dynamodb",
                   arn: "${env:ORDERS_STREAM_ARN}",
                   batchSize: 5,
                   startingPosition: "LATEST",
                 },
-              },
+              },*/
               {
                 sqs: {
                   arn: `arn:aws:sqs:${region}:${accountId}:orderQueue`,

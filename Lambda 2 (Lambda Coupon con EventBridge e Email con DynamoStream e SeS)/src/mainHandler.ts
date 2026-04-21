@@ -22,8 +22,8 @@ const isSqsEvent = (event: unknown): event is SQSEvent => {
   );
 };
 
-const isInsertNewImageRecord = (record: DynamoDBRecord): boolean =>
-  record.eventName === "INSERT" && !!record.dynamodb?.NewImage;
+/*const isInsertNewImageRecord = (record: DynamoDBRecord): boolean =>
+  record.eventName === "INSERT" && !!record.dynamodb?.NewImage;*/
 
 const isModifyOldAndNewRecord = (record: DynamoDBRecord): boolean =>
   record.eventName === "MODIFY" &&
@@ -39,9 +39,9 @@ export const handler = async (event: unknown) => {
     return couponHandler(event);
   }
 
-  if (event.Records.length > 0 && event.Records.every(isInsertNewImageRecord)) {
+  /*if (event.Records.length > 0 && event.Records.every(isInsertNewImageRecord)) {
     return emailStreamsHandler(event);
-  }
+  }*/
 
   if (
     event.Records.length > 0 &&
@@ -55,3 +55,7 @@ export const handler = async (event: unknown) => {
     body: JSON.stringify({ message: "Stream non gestito", processed: 0 }),
   };
 };
+
+/*
+emailStreamsHandler è stato sostituito da emailSqsHandler, che legge i messaggi da una coda SQS invece che direttamente dallo stream di DynamoDB.
+*/

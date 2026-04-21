@@ -17,3 +17,9 @@ export const handler = async (event: DynamoDBStreamEvent) => {
     }),
   };
 };
+
+/*
+Questo handler veniva usato quando l'invio delle email era triggerato direttamente dallo stream di DynamoDB,
+ma è stato sostituito da un'architettura più modulare che prevede l'uso di SQS come buffer tra 
+DynamoDB e l'invio delle email.
+*/
