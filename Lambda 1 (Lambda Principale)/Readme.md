@@ -71,6 +71,13 @@ Le variabili principali esposte alla funzione sono:
 - `USERS_TABLE`
 - `ORDERS_TABLE`
 - `DISCOUNTS_TABLE`
+- `BUCKET_NAME`
+- `ORDER_EMAIL_QUEUE_URL`
+
+Inoltre la funzione espone anche:
+
+- `ACCOUNT_ID`
+- `LAYER_VERSION`
 
 Per il deploy locale/dev conviene avere anche un file `.env` coerente con lo stage usato.
 
@@ -81,6 +88,8 @@ La Lambda ha permessi per:
 1. accesso DynamoDB su utenti, ordini e coupon
 2. accesso agli indici GSI delle tre tabelle
 3. lettura secret da AWS Secrets Manager
+4. invio/ricezione messaggi su SQS (`orderQueue`) per pipeline email ordini
+5. accesso bucket S3 (`order-bill-s3`) per listing/upload/download fatture PDF
 
 ## Deploy
 
@@ -204,7 +213,7 @@ Prefisso: /orders
 - Body tipico:
   - typeFood (string)
   - quantity (number)
-  - price (number)
+  - price (number opzionale, default 0)
   - coupon (string opzionale)
 - Note coupon:
   - se coupon presente, viene cercato per utente e codice
@@ -227,6 +236,11 @@ Prefisso: /orders
 
 - Descrizione: restituisce piatto piu ordinato
 - Auth: no
+
+7. GET /orders/bills
+
+- Descrizione: recupera elenco fatture PDF utente da S3 con URL pre-firmati (validita' 60s)
+- Auth: si
 
 ### Users
 
@@ -272,14 +286,13 @@ Prefisso: /discounts
 - Ruolo: admin
 - Body richiesto:
   - userId (string)
-  - couponId (string, richiesto dalla validazione attuale)
   - coupon (string)
   - couponValue (number)
   - usageCount (number)
   - enabled (boolean)
   - expiresAt (string data valida)
 - Note:
-  - couponId viene rigenerato lato server con randomUUID
+  - couponId non va passato nel body: viene sempre generato lato server con randomUUID
   - expiresAt viene convertito e salvato in secondi Unix (coerente con TTL)
 
 3. PATCH /discounts/:couponId
@@ -297,6 +310,11 @@ Prefisso: /discounts
 - Descrizione: elimina coupon
 - Auth: si
 - Ruolo: admin
+
+## Integrazione Lambda 2
+
+Quando viene creato un ordine (`POST /orders`), Lambda 1 pubblica un messaggio su SQS (`orderQueue`) tramite `ORDER_EMAIL_QUEUE_URL`.
+Lambda 2 consuma la coda e si occupa dell'invio email + generazione PDF ordine.
 
 ## Modello Dati (Sintesi)
 
