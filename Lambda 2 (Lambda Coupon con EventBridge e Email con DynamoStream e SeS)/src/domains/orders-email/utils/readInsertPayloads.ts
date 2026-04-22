@@ -6,16 +6,12 @@ import { OrderInsertPayload } from "../types/OrderInsertPayload";
 export const readInsertPayloads = (
   event: DynamoDBStreamEvent,
 ): OrderInsertPayload[] => {
-    
-  return event.Records
-    .filter((record) => record.eventName === "INSERT")
+  return event.Records.filter((record) => record.eventName === "INSERT")
     .map((record) => {
       const image = record.dynamodb?.NewImage;
       if (!image) return null;
 
-      return unmarshall(
-        image as Record<string, never>,
-      ) as OrderInsertPayload;
+      return unmarshall(image as Record<string, never>) as OrderInsertPayload;
     })
     .filter((item): item is OrderInsertPayload => item !== null);
 };

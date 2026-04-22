@@ -10,16 +10,19 @@ type ModifyPair = {
 export const readModifyPayloads = (
   event: DynamoDBStreamEvent,
 ): ModifyPair[] => {
-  return event.Records
-    .filter((record) => record.eventName === "MODIFY")
+  return event.Records.filter((record) => record.eventName === "MODIFY")
     .map((record) => {
       const newImage = record.dynamodb?.NewImage;
       const oldImage = record.dynamodb?.OldImage;
       if (!newImage || !oldImage) return null;
 
       return {
-        oldItem: unmarshall(oldImage as Record<string, never>) as couponModifyPayload,
-        newItem: unmarshall(newImage as Record<string, never>) as couponModifyPayload,
+        oldItem: unmarshall(
+          oldImage as Record<string, never>,
+        ) as couponModifyPayload,
+        newItem: unmarshall(
+          newImage as Record<string, never>,
+        ) as couponModifyPayload,
       };
     })
     .filter((item): item is ModifyPair => item !== null);

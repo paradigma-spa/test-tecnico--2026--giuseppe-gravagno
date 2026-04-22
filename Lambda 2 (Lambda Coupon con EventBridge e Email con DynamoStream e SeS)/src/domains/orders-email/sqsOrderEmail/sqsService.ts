@@ -1,4 +1,3 @@
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import type { SQSEvent } from "aws-lambda";
 import type { OrderEmailMessage } from "../types/OrderEmailMessage";
 

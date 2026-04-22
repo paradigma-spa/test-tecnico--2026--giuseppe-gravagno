@@ -26,6 +26,7 @@ export const handler = async (event: unknown) => {
     await updateRuleTargetInputForNextInvocation(payloadToCreate);
   } catch (error) {
     console.error("Errore aggiornando il target EventBridge", error);
+      throw error;
   }
 
   console.log("Coupon creato con successo", {
@@ -34,7 +35,6 @@ export const handler = async (event: unknown) => {
   });
 
   return {
-    statusCode: 200,
     body: JSON.stringify({ message: "Coupon creato" }),
   };
 };

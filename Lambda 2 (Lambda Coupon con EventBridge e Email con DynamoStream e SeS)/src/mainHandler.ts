@@ -1,6 +1,6 @@
 import { couponStateHandler } from "./domains/coupon-state/handler/couponStateHandler";
 import { handler as couponHandler } from "./domains/coupon/handlers/couponEventBridgeHandler";
-import { handler as emailStreamsHandler } from "./domains/orders-email/handler/emailStreamsHandler";
+//import { handler as emailStreamsHandler } from "./domains/orders-email/handler/emailStreamsHandler";
 import { handler as emailSqsHandler } from "./domains/orders-email/handler/emailSqsHandler";
 import { DynamoDBRecord, DynamoDBStreamEvent, SQSEvent } from "aws-lambda";
 
@@ -31,29 +31,37 @@ const isModifyOldAndNewRecord = (record: DynamoDBRecord): boolean =>
   !!record.dynamodb?.NewImage;
 
 export const handler = async (event: unknown) => {
-  if (isSqsEvent(event)) {
-    return emailSqsHandler(event);
-  }
+  try {
+    if (isSqsEvent(event)) {
+      return emailSqsHandler(event);
+    }
 
-  if (!isDynamoStreamEvent(event)) {
-    return couponHandler(event);
-  }
+    if (!isDynamoStreamEvent(event)) {
+      return couponHandler(event);
+    }
 
-  /*if (event.Records.length > 0 && event.Records.every(isInsertNewImageRecord)) {
+    /*if (event.Records.length > 0 && event.Records.every(isInsertNewImageRecord)) {
     return emailStreamsHandler(event);
   }*/
 
-  if (
-    event.Records.length > 0 &&
-    event.Records.every(isModifyOldAndNewRecord)
-  ) {
-    return couponStateHandler(event);
-  }
+    if (
+      event.Records.length > 0 &&
+      event.Records.every(isModifyOldAndNewRecord)
+    ) {
+      return couponStateHandler(event);
+    }
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: "Stream non gestito", processed: 0 }),
-  };
+    return {
+      body: JSON.stringify({ message: "Stream non gestito", processed: 0 }),
+    };
+
+  } catch (error) {
+    console.error("Errore nel handler principale", error);
+
+    return {
+      body: JSON.stringify({ message: "Errore interno" }),
+    };
+  }
 };
 
 /*

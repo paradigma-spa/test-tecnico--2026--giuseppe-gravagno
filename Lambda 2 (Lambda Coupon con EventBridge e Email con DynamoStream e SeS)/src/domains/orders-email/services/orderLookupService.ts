@@ -1,6 +1,6 @@
 import { OrderDynamo } from "../../../models/orderModel";
 
-export const getLastUserIdFromOrders = async ()=> {
+export const getLastUserIdFromOrders = async () => {
   const orders = (await OrderDynamo.scan().exec()) as Array<{
     userId?: string;
     createdAt?: string;
