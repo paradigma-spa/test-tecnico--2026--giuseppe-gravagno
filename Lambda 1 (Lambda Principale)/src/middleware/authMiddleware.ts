@@ -5,13 +5,15 @@ import { body } from "express-validator";
 
 declare module "express-serve-static-core" {
   interface Request {
-    user?: {
-      _id: string;
-      username: string;
-      role?: string;
-    };
+    user?: UserPayload;
   }
 }
+
+type UserPayload = {
+  id: string;
+  username: string;
+  role: string;
+};
 
 export const verifyJWT = async (
   req: Request,
@@ -32,12 +34,12 @@ export const verifyJWT = async (
     }
 
     const { JWT_SECRET } = await getSecrets();
-    const decoded: any = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET) as UserPayload;
 
     req.user = {
-      _id: decoded.id,
+      id: decoded.id,
       username: decoded.username,
-      role: decoded.role,
+      role: decoded.role ?? undefined,
     };
 
     next();
@@ -48,8 +50,15 @@ export const verifyJWT = async (
 
 export const validateRegister = [
   body("username").notEmpty(),
-  body("email").isEmail().notEmpty().withMessage("Inserisci una mail valida"),
+  body("email")
+    .trim()
+    .normalizeEmail()
+    .isEmail()
+    .notEmpty()
+    .withMessage("Inserisci una mail con un formato valido"),
   body("password")
+    .trim()
+    .notEmpty()
     .isStrongPassword()
     .withMessage(
       "La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero",
@@ -58,16 +67,16 @@ export const validateRegister = [
 
 export const validateLogin = [
   body("email")
+    .trim()
+    .normalizeEmail()
     .isEmail()
     .notEmpty()
-    .withMessage(
-      "La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero",
-    ),
+    .withMessage("Inserisci una mail con un formato valido"),
   body("password")
-    .isStrongPassword()
-    .withMessage(
-      "La password deve essere di almeno 8 caratteri, contenere una maiuscola, un carattere speciale ed un numero",
-    ),
+    .trim()
+    .notEmpty()
+    .isLength({ min: 8 })
+    .withMessage("Inserisci una password valida"),
 ];
 
 export const isAdmin = (req: Request, res: Response, next: NextFunction) => {

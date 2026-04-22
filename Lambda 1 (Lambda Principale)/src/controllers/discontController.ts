@@ -2,6 +2,15 @@ import { type Request, type Response } from "express";
 import { DiscountDynamo } from "../models/discountModel";
 import { randomUUID } from "crypto";
 
+const parseExpiresAtToEpochSeconds = (expiresAt: unknown) => {
+  const parsed = Date.parse(String(expiresAt));
+  if (Number.isNaN(parsed)) {
+    return null;
+  }
+
+  return parsed / 1000;
+};
+
 export const getDiscount = async (req: Request, res: Response) => {
   try {
     const allDiscounts = await DiscountDynamo.scan().exec();
@@ -13,32 +22,24 @@ export const getDiscount = async (req: Request, res: Response) => {
 
 export const createDiscount = async (req: Request, res: Response) => {
   try {
-    const {
-      userId,
-      coupon,
-      couponValue,
-      usageCount,
-      enabled,
-      expiresAt,
-    } = req.body;
+    const { userId, coupon, couponValue, usageCount, enabled, expiresAt } =
+      req.body;
 
-    const parseDateExpiresAt = Date.parse(expiresAt);
-    if (isNaN(parseDateExpiresAt)) {
+    const expiresAtEpochSeconds = parseExpiresAtToEpochSeconds(expiresAt);
+    if (expiresAtEpochSeconds === null) {
       return res
         .status(400)
         .json({ message: "Formato data expiresAt non valido" });
     }
 
-    const parseDateExpiresAtSecond = parseDateExpiresAt / 1000;
-
     const newDiscount = new DiscountDynamo({
       userId,
-      couponId : randomUUID(),
+      couponId: randomUUID(),
       coupon,
       couponValue,
       usageCount,
       enabled,
-      expiresAt: parseDateExpiresAtSecond,
+      expiresAt: expiresAtEpochSeconds,
     });
     await newDiscount.save();
     return res
@@ -82,14 +83,13 @@ export const updateDiscont = async (req: Request, res: Response) => {
     if (enabled !== undefined) updates.enabled = enabled;
     if (usageCount !== undefined) updates.usageCount = usageCount;
     if (expiresAt !== undefined) {
-      const parseDateExpiresAt = Date.parse(expiresAt);
-      if (isNaN(parseDateExpiresAt)) {
+      const expiresAtEpochSeconds = parseExpiresAtToEpochSeconds(expiresAt);
+      if (expiresAtEpochSeconds === null) {
         return res
           .status(400)
           .json({ message: "Formato data expiresAt non valido" });
       }
-      const parseDateExpiresAtSecond = parseDateExpiresAt / 1000;
-      updates.expiresAt = parseDateExpiresAtSecond;
+      updates.expiresAt = expiresAtEpochSeconds;
     }
 
     if (Object.keys(updates).length === 0) {

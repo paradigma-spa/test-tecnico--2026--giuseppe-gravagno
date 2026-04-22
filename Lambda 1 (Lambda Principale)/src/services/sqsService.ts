@@ -8,8 +8,7 @@ export const enqueueOrderEmail = async (message: OrderEmailMessage) => {
     });
 
     const queueUrl =
-      process.env.ORDER_EMAIL_QUEUE_URL ||
-      "https://sqs.eu-south-1.amazonaws.com/847041281071/orderQueue";
+      process.env.ORDER_EMAIL_QUEUE_URL
 
     const sendMessage = new SendMessageCommand({
       QueueUrl: queueUrl,

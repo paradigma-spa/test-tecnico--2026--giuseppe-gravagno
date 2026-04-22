@@ -14,6 +14,8 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { enqueueOrderEmail } from "../services/sqsService";
 
+type OrderOwner = { userId: string };
+
 export const getOrders = async (req: Request, res: Response) => {
   try {
     const allOrders = await OrderDynamo.scan().exec();
@@ -33,7 +35,7 @@ export const newOrder = async (req: Request, res: Response) => {
 
     if (coupon && String(coupon).trim() !== "") {
       const ckeckCoupon = await findValidCouponByCode(
-        req.user._id,
+        req.user.id,
         String(coupon),
       );
 
@@ -65,7 +67,7 @@ export const newOrder = async (req: Request, res: Response) => {
       const discountApplied = applyCoupon.discountApplied;
 
       await decrementCouponUsage(
-        req.user._id,
+        req.user.id,
         ckeckCoupon.couponId,
         ckeckCoupon.usageCount,
       );
@@ -77,7 +79,7 @@ export const newOrder = async (req: Request, res: Response) => {
         price: priceFinal,
         coupon: ckeckCoupon.coupon,
         couponId: ckeckCoupon.couponId,
-        userId: req.user._id,
+        userId: req.user.id,
       };
 
       const savedOrder = await OrderDynamo.create(orderData);
@@ -107,7 +109,7 @@ export const newOrder = async (req: Request, res: Response) => {
       typeFood,
       quantity,
       price: Number(price ?? 0),
-      userId: req.user._id,
+      userId: req.user.id,
     };
 
     const savedOrder = await OrderDynamo.create(orderData);
@@ -144,18 +146,14 @@ export const updateOrder = async (req: Request, res: Response) => {
 
     const { typeFood, quantity } = req.body;
 
-    const order = (await OrderDynamo.get(id)) as unknown as
-      | { userId: string }
-      | undefined;
+    const order = (await OrderDynamo.get(id)) as Partial<OrderOwner> | undefined;
 
-    if (!order) {
-      return res
-        .status(404)
-        .json({ message: `Nessun ordine presente con l'id: ${id}` });
+    if (!order || typeof order.userId !== "string") {
+    return res.status(404).json({ message: "Ordine non trovato" });
     }
 
-    if (order.userId !== req.user?._id) {
-      return res.status(403).json({ message: "Non autorizzato" });
+    if (order.userId !== req.user?.id) {
+    return res.status(403).json({ message: "Non autorizzato" });
     }
 
     const updates: { typeFood?: string; quantity?: number } = {};
@@ -181,22 +179,14 @@ export const deleteOrder = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Id ordine mancante" });
     }
 
-    const order = (await OrderDynamo.get(id)) as unknown as
-      | { userId: string }
-      | undefined;
+    const order = (await OrderDynamo.get(id)) as Partial<OrderOwner> | undefined;
 
-    if (!order) {
-      return res.status(404).json({ message: "Ordine non trovato" });
+    if (!order || typeof order.userId !== "string") {
+    return res.status(404).json({ message: "Ordine non trovato" });
     }
 
-    if (!req.user) {
-      return res.status(401).json({ message: "Non autenticato" });
-    }
-
-    if (order.userId !== req.user._id) {
-      return res
-        .status(403)
-        .json({ message: "Non puoi eliminare questo ordine" });
+    if (order.userId !== req.user?.id) {
+    return res.status(403).json({ message: "Non autorizzato" });
     }
 
     await OrderDynamo.delete(id);
@@ -211,13 +201,13 @@ export const deleteOrder = async (req: Request, res: Response) => {
 
 export const getMyOrder = async (req: Request, res: Response) => {
   try {
-    if (!req.user?._id) {
+    if (!req.user?.id) {
       return res.status(401).json({ message: "Utente non autenticato" });
     }
 
     const orders = await OrderDynamo.query("userId")
       .using("UserOrdersIndex")
-      .eq(req.user._id)
+      .eq(req.user.id)
       .exec();
 
     return res.status(200).json({ orders });
@@ -230,28 +220,24 @@ export const getMostPopularOrder = async (req: Request, res: Response) => {
   try {
     const orders = await OrderDynamo.scan().exec();
 
-    if (orders.length === 0) {
-      return res.status(404).json({ message: "Nessun ordine trovato" });
-    }
-
-    const counts = new Map<string, number>();
-    for (const order of orders) {
-      const key = order.typeFood;
-      if (!key) continue;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-
-    if (counts.size === 0) {
-      return res.status(404).json({ message: "Nessun ordine trovato" });
-    }
-
-    let mostPopular = "";
+    const counters = new Map<string, number>();
+    let mostPopular: string | null = null;
     let maxCount = 0;
-    for (const [food, count] of counts.entries()) {
-      if (count > maxCount) {
-        mostPopular = food;
-        maxCount = count;
+
+    for (const { typeFood } of orders) {
+      if (!typeFood) continue;
+
+      const nextCount = (counters.get(typeFood) ?? 0) + 1;
+      counters.set(typeFood, nextCount);
+
+      if (nextCount > maxCount) {
+        maxCount = nextCount;
+        mostPopular = typeFood;
       }
+    }
+
+    if (!mostPopular) {
+      return res.status(404).json({ message: "Nessun ordine trovato" });
     }
 
     return res.status(200).json({
@@ -269,7 +255,7 @@ export const getOrderBills = async (req: Request, res: Response) => {
 
     const personalBills = new ListObjectsV2Command({
       Bucket: process.env.BUCKET_NAME,
-      Prefix: `${req.user?._id}/`,
+      Prefix: `${req.user?.id}/`,
     });
 
     const data = s3Client.send(personalBills);

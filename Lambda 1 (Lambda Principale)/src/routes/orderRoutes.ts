@@ -11,6 +11,7 @@ import {
   updateOrder,
 } from "../controllers/orderController";
 import { verifyJWT } from "../middleware/authMiddleware";
+import { validateCreateOrder } from "../middleware/orderMiddleware";
 
 const router = Router();
 
@@ -26,10 +27,10 @@ const checkValidation = (req: Request, res: Response, next: NextFunction) => {
 
 router.get("/", getOrders);
 router.get("/me", verifyJWT, getMyOrder);
-router.post("/", verifyJWT, checkValidation, newOrder);
+router.post("/", verifyJWT, validateCreateOrder(), checkValidation, newOrder);
 router.patch("/:id", verifyJWT, checkValidation, updateOrder);
 router.delete("/:id", verifyJWT, checkValidation, deleteOrder);
 router.get("/most_order", checkValidation, getMostPopularOrder);
-router.get("/bills",verifyJWT, checkValidation, getOrderBills)
+router.get("/bills", verifyJWT, checkValidation, getOrderBills);
 
 export default router;

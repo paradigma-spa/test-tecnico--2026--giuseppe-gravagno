@@ -27,9 +27,7 @@ export const userRegister = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
     if (!hashedPassword) {
         console.error('Error hashing password');
-    } else {
-        console.log('Hashed password:', hashedPassword);
-    }
+    }     
 
     await UserDynamo.create({
       id: randomUUID(),

@@ -16,7 +16,7 @@ export const findValidCouponByCode = async (
 ) => {
   const normalized = couponCode.trim().toLowerCase();
 
-  const results = (await DiscountDynamo.scan("userId")
+  const results = (await DiscountDynamo.query("userId")
     .eq(userId)
     .exec()) as unknown as CouponEntity[];
 

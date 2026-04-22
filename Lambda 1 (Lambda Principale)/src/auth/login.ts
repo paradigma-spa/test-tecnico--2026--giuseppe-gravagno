@@ -32,9 +32,7 @@ export const userLogin = async (req: Request, res: Response) => {
         .status(500)
         .json({ message: "JWT_SECRET non trovato nel secret" });
     }
-
-    console.log("JWT_SECRET:", secrets.JWT_SECRET);
-
+    
     const token = jwt.sign(
       { id: user!.id, username: user!.username, role: user!.role },
       secrets.JWT_SECRET,
