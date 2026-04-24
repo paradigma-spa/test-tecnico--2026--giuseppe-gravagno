@@ -7,6 +7,7 @@ import {
   getMyOrder,
   getOrderBills,
   getOrders,
+  getStatus,
   newOrder,
   updateOrder,
 } from "../controllers/orderController";
@@ -32,5 +33,6 @@ router.patch("/:id", verifyJWT, checkValidation, updateOrder);
 router.delete("/:id", verifyJWT, checkValidation, deleteOrder);
 router.get("/most_order", checkValidation, getMostPopularOrder);
 router.get("/bills", verifyJWT, checkValidation, getOrderBills);
+router.get("/status/:id", verifyJWT, checkValidation, getStatus);
 
 export default router;

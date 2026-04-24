@@ -28,6 +28,9 @@ const serverlessConfig: AWS =
             DISCOUNTS_TABLE: discountsTableName,
             BUCKET_NAME: "${env:BUCKET_NAME, ''}",
             ORDER_EMAIL_QUEUE_URL: "${env:ORDER_EMAIL_QUEUE_URL, ''}",
+            EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
+            EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
+            EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
           },
           iam: {
             role: {
@@ -39,6 +42,7 @@ const serverlessConfig: AWS =
                     "dynamodb:PutItem",
                     "dynamodb:UpdateItem",
                     "dynamodb:DeleteItem",
+                    "dynamodb:ConditionCheckItem",
                     "dynamodb:Query",
                     "dynamodb:Scan",
                   ],
@@ -82,6 +86,11 @@ const serverlessConfig: AWS =
                     "sqs:DeleteMessage",
                   ],
                   Resource: `arn:aws:sqs:${region}:${accountId}:orderQueue`,
+                },
+                {
+                  Effect: "Allow",
+                  Action: ["events:PutTargets"],
+                  Resource: "*",
                 },
                 {
                   Effect: "Allow",
@@ -132,6 +141,9 @@ const serverlessConfig: AWS =
               ORDERS_TABLE: ordersTableName,
               DISCOUNTS_TABLE: discountsTableName,
               ORDER_EMAIL_QUEUE_URL: "${env:ORDER_EMAIL_QUEUE_URL, ''}",
+              EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
+              EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
+              EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
             },
             events: [
               { http: { method: "any", path: "/" } },
@@ -172,6 +184,8 @@ const serverlessConfig: AWS =
                   { AttributeName: "id", AttributeType: "S" },
                   { AttributeName: "userId", AttributeType: "S" },
                   { AttributeName: "createdAt", AttributeType: "S" },
+                  { AttributeName: "status", AttributeType: "S" },
+                  { AttributeName: "nextStatusAt", AttributeType: "N" },
                 ],
                 KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
                 GlobalSecondaryIndexes: [
@@ -180,6 +194,14 @@ const serverlessConfig: AWS =
                     KeySchema: [
                       { AttributeName: "userId", KeyType: "HASH" },
                       { AttributeName: "createdAt", KeyType: "RANGE" },
+                    ],
+                    Projection: { ProjectionType: "ALL" },
+                  },
+                  {
+                    IndexName: "StatusIndex",
+                    KeySchema: [
+                      { AttributeName: "status", KeyType: "HASH" },
+                      { AttributeName: "nextStatusAt", KeyType: "RANGE" },
                     ],
                     Projection: { ProjectionType: "ALL" },
                   },

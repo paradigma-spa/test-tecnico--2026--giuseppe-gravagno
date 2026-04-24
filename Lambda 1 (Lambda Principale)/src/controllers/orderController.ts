@@ -13,6 +13,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { enqueueOrderEmail } from "../services/sqsService";
+import { OrderStatusPayload } from "../types/OrderStatus";
 
 type OrderOwner = { userId: string };
 
@@ -146,14 +147,16 @@ export const updateOrder = async (req: Request, res: Response) => {
 
     const { typeFood, quantity } = req.body;
 
-    const order = (await OrderDynamo.get(id)) as Partial<OrderOwner> | undefined;
+    const order = (await OrderDynamo.get(id)) as
+      | Partial<OrderOwner>
+      | undefined;
 
     if (!order || typeof order.userId !== "string") {
-    return res.status(404).json({ message: "Ordine non trovato" });
+      return res.status(404).json({ message: "Ordine non trovato" });
     }
 
     if (order.userId !== req.user?.id) {
-    return res.status(403).json({ message: "Non autorizzato" });
+      return res.status(403).json({ message: "Non autorizzato" });
     }
 
     const updates: { typeFood?: string; quantity?: number } = {};
@@ -179,14 +182,16 @@ export const deleteOrder = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Id ordine mancante" });
     }
 
-    const order = (await OrderDynamo.get(id)) as Partial<OrderOwner> | undefined;
+    const order = (await OrderDynamo.get(id)) as
+      | Partial<OrderOwner>
+      | undefined;
 
     if (!order || typeof order.userId !== "string") {
-    return res.status(404).json({ message: "Ordine non trovato" });
+      return res.status(404).json({ message: "Ordine non trovato" });
     }
 
     if (order.userId !== req.user?.id) {
-    return res.status(403).json({ message: "Non autorizzato" });
+      return res.status(403).json({ message: "Non autorizzato" });
     }
 
     await OrderDynamo.delete(id);
@@ -288,5 +293,38 @@ export const getOrderBills = async (req: Request, res: Response) => {
     return res.status(200).json({ bills: promise });
   } catch (error) {
     return res.status(500).json({ message: "Errore lato server" });
+  }
+};
+
+export const getStatus = async (req: Request, res: Response) => {
+  try {
+    const orderIdParam = req.params.id;
+    if (!orderIdParam) {
+      return res.status(400).json({ message: "Id ordine mancante" });
+    }
+
+    const orderId = Array.isArray(orderIdParam)
+      ? orderIdParam[0]
+      : orderIdParam;
+
+    if (!orderId) {
+      return res.status(400).json({ message: "Id ordine mancante" });
+    }
+
+    const order = (await OrderDynamo.get(
+      orderId,
+    )) as unknown as OrderStatusPayload;
+
+    if (!order) {
+      return res.status(404).json({ message: "Ordine non trovato" });
+    }
+
+    return res.status(200).json({
+      id: order.id,
+      status: order.status,
+      nextStatusAt: order.nextStatusAt ?? null,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Errore server" });
   }
 };

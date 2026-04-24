@@ -1,5 +1,5 @@
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import type { OrderEmailMessage } from "../types/OrderEmailMessage";
+import type { OrderEmailMessage } from "../types/orderEmailMessage";
 
 export const enqueueOrderEmail = async (message: OrderEmailMessage) => {
   try {

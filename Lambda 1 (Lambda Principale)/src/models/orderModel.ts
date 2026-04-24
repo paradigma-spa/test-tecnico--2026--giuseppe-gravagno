@@ -38,6 +38,22 @@ const orderDynamoSchema = new dynamoose.Schema({
     required: true,
     default: () => new Date().toISOString(),
   },
+  status: {
+    type: String,
+    required: true,
+    default: "CREATED",
+    enum: ["CREATED", "PROCESSING", "PREPARATION", "READY", "COMPLETED"],
+    index: {
+      name: "StatusIndex",
+      type: "global",
+      rangeKey: "nextStatusAt",
+    },
+  },
+  nextStatusAt: {
+    type: Number,
+    required: true,
+    default: () => Math.floor(Date.now() / 1000) + 300,
+  },
 });
 
 export const OrderDynamo = dynamoose.model(
