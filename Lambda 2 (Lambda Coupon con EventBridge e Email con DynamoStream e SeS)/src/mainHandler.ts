@@ -1,5 +1,6 @@
 import { couponStateHandler } from "./domains/coupon-state/handler/couponStateHandler";
 import { handler as couponHandler } from "./domains/coupon/handlers/couponEventBridgeHandler";
+import { handler as updateOrderStatusHandler } from "./domains/update-status-order/handler/updateOrderStatusHandler";
 //import { handler as emailStreamsHandler } from "./domains/orders-email/handler/emailStreamsHandler";
 import { handler as emailSqsHandler } from "./domains/orders-email/handler/emailSqsHandler";
 import { DynamoDBRecord, DynamoDBStreamEvent, SQSEvent } from "aws-lambda";
@@ -22,6 +23,15 @@ const isSqsEvent = (event: unknown): event is SQSEvent => {
   );
 };
 
+const isScheduledEvent = (event: unknown): boolean => {
+  return (
+    !!event &&
+    typeof event === "object" &&
+    "source" in event &&
+    (event as any).source === "aws.events"
+  );
+};
+
 /*const isInsertNewImageRecord = (record: DynamoDBRecord): boolean =>
   record.eventName === "INSERT" && !!record.dynamodb?.NewImage;*/
 
@@ -32,6 +42,10 @@ const isModifyOldAndNewRecord = (record: DynamoDBRecord): boolean =>
 
 export const handler = async (event: unknown) => {
   try {
+    if (isScheduledEvent(event)) {
+      return updateOrderStatusHandler(event);
+    }
+
     if (isSqsEvent(event)) {
       return emailSqsHandler(event);
     }
@@ -54,7 +68,6 @@ export const handler = async (event: unknown) => {
     return {
       body: JSON.stringify({ message: "Stream non gestito", processed: 0 }),
     };
-
   } catch (error) {
     console.error("Errore nel handler principale", error);
 

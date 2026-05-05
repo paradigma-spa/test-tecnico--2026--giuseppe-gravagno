@@ -1,5 +1,10 @@
-import { OrderDynamo } from "../models/orderModel";
-import { OrderStatusPayload } from "../types/OrderStatus";
+import { OrderDynamo } from "../../../models/orderModel";
+
+type OrderStatusPayload = {
+  id: string;
+  status: string;
+  nextStatusAt: number;
+};
 
 export const updateOrderStatus = async () => {
   try {
@@ -31,56 +36,35 @@ export const updateOrderStatus = async () => {
       .le(Math.floor(Date.now() / 1000))
       .exec()) as unknown as OrderStatusPayload[];
 
-    const orderMap = orderCreated.map(async (order) => {
-      if (order.status == "CREATED") {
-        const newNextStatus = (order.nextStatusAt =
-          Math.floor(Date.now() / 1000) + 300); // 5 minuti
-        const newStatus = (order.status = "PROCESSING");
-
-        await OrderDynamo.update(order.id, {
-          status: newStatus,
-          nextStatusAt: newNextStatus,
-        });
-      }
+    const orderCreatedMap = orderCreated.map(async (order) => {
+      await OrderDynamo.update(order.id, {
+        status: "PROCESSING",
+        nextStatusAt: Math.floor(Date.now() / 1000) + 300, // 5 minuti
+      });
     });
 
     const orderProcessingMap = orderProcessing.map(async (order) => {
-      if (order.status == "PROCESSING") {
-        const newNextStatus = (order.nextStatusAt =
-          Math.floor(Date.now() / 1000) + 400); // 6 minuti
-        const newStatus = (order.status = "PREPARATION");
-
-        await OrderDynamo.update(order.id, {
-          status: newStatus,
-          nextStatusAt: newNextStatus,
-        });
-      }
+      await OrderDynamo.update(order.id, {
+        status: "PREPARATION",
+        nextStatusAt: Math.floor(Date.now() / 1000) + 400, // ~6 minuti
+      });
     });
 
     const orderPreparationMap = orderPreparation.map(async (order) => {
-      if (order.status == "PREPARATION") {
-        const newNextStatus = (order.nextStatusAt =
-          Math.floor(Date.now() / 1000) + 600); // 10 minuti
-        const newStatus = (order.status = "READY");
-
-        await OrderDynamo.update(order.id, {
-          status: newStatus,
-          nextStatusAt: newNextStatus,
-        });
-      }
+      await OrderDynamo.update(order.id, {
+        status: "READY",
+        nextStatusAt: Math.floor(Date.now() / 1000) + 600, // 10 minuti
+      });
     });
 
     const orderReadyMap = orderReady.map(async (order) => {
-      if (order.status == "READY") {
-        const newStatus = (order.status = "COMPLETED");
-        await OrderDynamo.update(order.id, {
-          status: newStatus,
-        });
-      }
+      await OrderDynamo.update(order.id, {
+        status: "COMPLETED",
+      });
     });
 
     await Promise.all([
-      ...orderMap,
+      ...orderCreatedMap,
       ...orderProcessingMap,
       ...orderPreparationMap,
       ...orderReadyMap,

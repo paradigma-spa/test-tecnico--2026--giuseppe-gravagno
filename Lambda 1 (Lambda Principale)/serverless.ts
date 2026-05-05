@@ -89,11 +89,6 @@ const serverlessConfig: AWS =
                 },
                 {
                   Effect: "Allow",
-                  Action: ["events:PutTargets"],
-                  Resource: "*",
-                },
-                {
-                  Effect: "Allow",
                   Action: [
                     "s3:ListBucket",
                     "s3:GetObject",
