@@ -13,7 +13,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { enqueueOrderEmail } from "../services/sqsService";
-import { OrderStatusPayload } from "../types/OrderStatus";
+import { OrderStatusPayload } from "../types/orderStatus";
 
 type OrderOwner = { userId: string };
 

@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "tsc & node ./dist/server.js",
+    "build": "tsc",
+    "start:ec2": "tsc && node ./dist/ec2.js",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "deploy:layer": "cross-env DEPLOY= LayerVersion=1 serverless deploy",
