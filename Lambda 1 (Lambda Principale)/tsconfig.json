@@ -36,7 +36,6 @@
     // Recommended Options
     "strict": true,
     "esModuleInterop": true,
-    "moduleResolution": "node",
     "isolatedModules": true,
     "skipLibCheck": true
   },
