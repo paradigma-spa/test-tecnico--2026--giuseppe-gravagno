@@ -7,7 +7,7 @@
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
-    "module": "node16",
+    "module": "commonjs",
     "target": "es2020",
     "types": ["jest", "node"],
 
@@ -36,7 +36,8 @@
     // Recommended Options
     "strict": true,
     "esModuleInterop": true,
-    "moduleResolution": "node16",
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
     "isolatedModules": true,
     "skipLibCheck": true
   },
