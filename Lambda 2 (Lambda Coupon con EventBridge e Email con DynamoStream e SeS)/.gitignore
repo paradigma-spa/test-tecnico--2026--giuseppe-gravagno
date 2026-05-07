@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+layer/
+.webpack/
+.serverless/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
