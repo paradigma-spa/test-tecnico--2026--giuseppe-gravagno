@@ -1,10 +1,5 @@
 import { OrderDynamo } from "../../../models/orderModel";
-
-type OrderStatusPayload = {
-  id: string;
-  status: string;
-  nextStatusAt: number;
-};
+import {OrderStatusPayload} from "../types/OrderStatusPayload";
 
 export const updateOrderStatus = async () => {
   try {

@@ -5,7 +5,7 @@ const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayer";
 const bucketName = "order-bill-s3";
-const layerVersion = "8";
+const layerVersion = "9";
 const usersTableName = `${projectName}-${"${sls:stage}"}-users`;
 const ordersTableName = `${projectName}-${"${sls:stage}"}-orders`;
 const discountsTableName = `${projectName}-${"${sls:stage}"}-discounts`;
@@ -31,6 +31,7 @@ const serverlessConfig: AWS =
             EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
             EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
             EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
+            UPDATE_STATUS_ORDER_LAMBDA_NAME: "${env:UPDATE_STATUS_ORDER_LAMBDA_NAME, ''}",
           },
           iam: {
             role: {
@@ -76,6 +77,11 @@ const serverlessConfig: AWS =
                 {
                   Effect: "Allow",
                   Action: ["secretsmanager:GetSecretValue"],
+                  Resource: "*",
+                },
+                {
+                  Effect: "Allow",
+                  Action : ["lambda:InvokeFunction"],
                   Resource: "*",
                 },
                 {
@@ -139,6 +145,7 @@ const serverlessConfig: AWS =
               EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
               EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
               EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
+              UPDATE_STATUS_ORDER_LAMBDA_NAME: "${env:UPDATE_STATUS_ORDER_LAMBDA_NAME, ''}",
             },
             events: [
               { http: { method: "any", path: "/" } },

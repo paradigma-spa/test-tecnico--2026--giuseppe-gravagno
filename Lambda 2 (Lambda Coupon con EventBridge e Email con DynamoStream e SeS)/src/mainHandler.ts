@@ -4,7 +4,7 @@ import { handler as updateOrderStatusHandler } from "./domains/update-status-ord
 //import { handler as emailStreamsHandler } from "./domains/orders-email/handler/emailStreamsHandler";
 import { handler as emailSqsHandler } from "./domains/orders-email/handler/emailSqsHandler";
 import { DynamoDBRecord, DynamoDBStreamEvent, SQSEvent } from "aws-lambda";
-
+import { viewOrderStatusService } from "./domains/update-status-order/services/viewOrderStatusService";
 const isDynamoStreamEvent = (event: unknown): event is DynamoDBStreamEvent => {
   return !!event && typeof event === "object" && "Records" in event;
 };
@@ -32,6 +32,18 @@ const isScheduledEvent = (event: unknown): boolean => {
   );
 };
 
+const isGetOrderStatusEvent = (
+  event: unknown,
+): event is { action: string; orderId: string } => {
+  return (
+    !!event &&
+    typeof event === "object" &&
+    "action" in event &&
+    (event as any).action === "get-order-status" &&
+    "orderId" in event
+  );
+};
+
 /*const isInsertNewImageRecord = (record: DynamoDBRecord): boolean =>
   record.eventName === "INSERT" && !!record.dynamodb?.NewImage;*/
 
@@ -44,6 +56,10 @@ export const handler = async (event: unknown) => {
   try {
     if (isScheduledEvent(event)) {
       return updateOrderStatusHandler(event);
+    }
+
+    if (isGetOrderStatusEvent(event)) {
+      return viewOrderStatusService(event);
     }
 
     if (isSqsEvent(event)) {

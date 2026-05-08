@@ -14,6 +14,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { enqueueOrderEmail } from "../services/sqsService";
 import { OrderStatusPayload } from "../types/orderStatus";
+import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 
 type OrderOwner = { userId: string };
 
@@ -297,6 +298,14 @@ export const getOrderBills = async (req: Request, res: Response) => {
 };
 
 export const getStatus = async (req: Request, res: Response) => {
+
+  type GetStatusInvokeResponse = {
+  id?: string;
+  status?: string;
+  nextStatusAt?: number | null;
+};
+
+
   try {
     const orderIdParam = req.params.id;
     if (!orderIdParam) {
@@ -311,7 +320,29 @@ export const getStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Id ordine mancante" });
     }
 
-    const order = (await OrderDynamo.get(
+    const lambdaClient = new LambdaClient({ region: "eu-south-1" });
+
+    const command = new InvokeCommand({
+      FunctionName: process.env.UPDATE_STATUS_ORDER_LAMBDA_NAME,
+      Payload: Buffer.from(
+        JSON.stringify({ action: "get-order-status", orderId }),
+      ),
+    });
+
+    const response = await lambdaClient.send(command);
+
+    if (!response.Payload) {
+      return res.status(500).json({ message: "Errore nella comunicazione con il servizio di aggiornamento stato ordine" });
+    }
+    const payload = JSON.parse(Buffer.from(response.Payload!).toString()) as GetStatusInvokeResponse;
+
+    if (!payload.id || !payload.status) {
+      return res.status(404).json({ message: "Ordine non trovato" });
+    }
+    
+    return res.status(200).json(payload);
+
+    /*const order = (await OrderDynamo.get(
       orderId,
     )) as unknown as OrderStatusPayload;
 
@@ -323,7 +354,7 @@ export const getStatus = async (req: Request, res: Response) => {
       id: order.id,
       status: order.status,
       nextStatusAt: order.nextStatusAt ?? null,
-    });
+    });*/
   } catch (error) {
     return res.status(500).json({ message: "Errore server" });
   }
