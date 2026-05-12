@@ -19,6 +19,7 @@
     "@aws-sdk/client-sqs": "^3.1032.0",
     "@aws-sdk/util-dynamodb": "^3.996.2",
     "@sparticuz/chromium": "^147.0.0",
+    "axios": "^1.16.0",
     "dynamoose": "^4.1.5",
     "nodemailer": "^8.0.5",
     "puppeteer-core": "^24.41.0"
