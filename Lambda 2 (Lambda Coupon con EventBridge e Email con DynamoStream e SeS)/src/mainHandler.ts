@@ -5,6 +5,7 @@ import { handler as updateOrderStatusHandler } from "./domains/update-status-ord
 import { handler as emailSqsHandler } from "./domains/orders-email/handler/emailSqsHandler";
 import { DynamoDBRecord, DynamoDBStreamEvent, SQSEvent } from "aws-lambda";
 import { viewOrderStatusService } from "./domains/update-status-order/services/viewOrderStatusService";
+import { summaryUserHandler } from "./domains/summaryuser/handler/summaryUserHandler";
 const isDynamoStreamEvent = (event: unknown): event is DynamoDBStreamEvent => {
   return !!event && typeof event === "object" && "Records" in event;
 };
@@ -44,6 +45,18 @@ const isGetOrderStatusEvent = (
   );
 };
 
+const isGetSummaryUserEvent = (
+  event: unknown,
+): event is { action: string; userId: string } => {
+  return (
+    !!event &&
+    typeof event === "object" &&
+    "action" in event &&
+    (event as any).action === "get-summary-user" &&
+    "userId" in event
+  );
+};
+
 /*const isInsertNewImageRecord = (record: DynamoDBRecord): boolean =>
   record.eventName === "INSERT" && !!record.dynamodb?.NewImage;*/
 
@@ -62,6 +75,10 @@ export const handler = async (event: unknown) => {
       return viewOrderStatusService(event);
     }
 
+    if (isGetSummaryUserEvent(event)) {
+      return summaryUserHandler(event);
+    }
+
     if (isSqsEvent(event)) {
       return emailSqsHandler(event);
     }
@@ -72,7 +89,7 @@ export const handler = async (event: unknown) => {
 
     /*if (event.Records.length > 0 && event.Records.every(isInsertNewImageRecord)) {
     return emailStreamsHandler(event);
-  }*/
+    }*/
 
     if (
       event.Records.length > 0 &&
