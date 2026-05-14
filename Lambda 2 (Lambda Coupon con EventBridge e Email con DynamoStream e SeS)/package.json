@@ -20,9 +20,10 @@
     "@aws-sdk/util-dynamodb": "^3.996.2",
     "@sparticuz/chromium": "^147.0.0",
     "axios": "^1.16.0",
-    "dynamoose": "^4.1.5",
     "nodemailer": "^8.0.5",
-    "puppeteer-core": "^24.41.0"
+    "puppeteer-core": "^24.41.0",
+    "sequelize": "^6.37.8",
+    "sqlite3": "^6.0.1"
   },
   "devDependencies": {
     "@serverless/typescript": "^4.30.0",

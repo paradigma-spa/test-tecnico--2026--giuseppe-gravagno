@@ -5,7 +5,7 @@ const region = "eu-south-1";
 const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayerCoupons";
-const layerVersion = "10";
+const layerVersion = "11";
 const discountsTableName = `order-api-${"${sls:stage}"}-discounts`;
 const ordersTableName = `order-api-${"${sls:stage}"}-orders`;
 const bucketName = "order-bill-s3";
@@ -26,6 +26,7 @@ const serverlessConfig: AWS =
             DISCOUNTS_TABLE: discountsTableName,
             ORDERS_TABLE: ordersTableName,
             PDF_BUCKET_NAME: bucketName,
+            LAMBDA1_BASE_URL: "${env:LAMBDA1_BASE_URL, ''}",
             ORDER_EMAIL_QUEUE_ARN: "${env:ORDER_EMAIL_QUEUE_ARN, ''}",
             EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
             EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
@@ -150,6 +151,7 @@ const serverlessConfig: AWS =
               DISCOUNTS_TABLE: discountsTableName,
               ORDERS_TABLE: ordersTableName,
               PDF_BUCKET_NAME: bucketName,
+              LAMBDA1_BASE_URL: "${env:LAMBDA1_BASE_URL, ''}",
               ORDER_EMAIL_QUEUE_ARN: "${env:ORDER_EMAIL_QUEUE_ARN, ''}",
               EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
               EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
