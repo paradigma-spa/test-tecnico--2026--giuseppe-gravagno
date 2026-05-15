@@ -8,7 +8,7 @@ const sequelize = new Sequelize(`${process.env.ORDER_COUPON_USER_DB_SQL}`, {
 
 export const Order = sequelize.define("Order", {
   
-  orderId: {
+  id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true,

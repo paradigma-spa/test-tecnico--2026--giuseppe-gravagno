@@ -6,6 +6,14 @@ const sequelize = new Sequelize(`${process.env.ORDER_COUPON_USER_DB_SQL}`, {
 });
 
 export const Discount = sequelize.define("Discount", {
+
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    allowNull: false,
+    primaryKey: true,
+  },
+
   userId: {
     type: DataTypes.UUID,
     allowNull: false,
@@ -16,13 +24,6 @@ export const Discount = sequelize.define("Discount", {
     },
     onUpdate: "CASCADE",
     onDelete: "CASCADE",
-  },
-
-  couponId: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    allowNull: false,
-    primaryKey: true,
   },
 
   //userId e couponId fanno da chiave primaria composta
@@ -56,7 +57,6 @@ export const Discount = sequelize.define("Discount", {
     updatedAt: "updatedAt"
   }
 );
-
 
 /*import dynamoose from "dynamoose";
 

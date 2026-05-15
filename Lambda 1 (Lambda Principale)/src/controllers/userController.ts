@@ -1,11 +1,14 @@
 import { type Request, type Response } from "express";
-import { UserDynamo } from "../models/userModel";
-import { OrderDynamo } from "../models/orderModel";
+import { User } from "../models/userModel";
+import { Order } from "../models/orderModel";
 import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 
 export const allUsers = async (req: Request, res: Response) => {
   try {
-    const allUsers = await UserDynamo.scan().exec();
+    
+    //const allUsers = await UserDynamo.scan().exec();
+    const allUsers = await User.findAll()
+
     return res.status(200).json({ allUsers });
   } catch (error) {
     res.status(500).json({ message: "Errore interno server" });
@@ -33,12 +36,16 @@ export const updateRole = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "newRole non valido" });
     }
 
-    const targetUser = await UserDynamo.get(userId);
+    //const targetUser = await UserDynamo.get(userId);
+    const targetUser = await User.findByPk(userId)
+
     if (!targetUser) {
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
-    await UserDynamo.update(userId, { role: newRole });
+    //await UserDynamo.update(userId, { role: newRole });
+    await User.update({ role: newRole }, {where: {id: userId}});
+
     return res.status(200).json({ message: `Ruolo aggiornato a ${newRole}` });
   } catch (error) {
     return res.status(500).json({ message: "Errore server" });
@@ -56,7 +63,9 @@ export const getTopCustomer = async (req: Request, res: Response) => {
     const start = startDate ? new Date(startDate as string) : oneMonthAgo;
     const end = endDate ? new Date(endDate as string) : now;
 
-    const orders = await OrderDynamo.scan().exec();
+    //const orders = await OrderDynamo.scan().exec();
+    const orders = await Order.findAll()
+
     const counters = new Map<string, number>();
 
     for (const order of orders) {
@@ -87,9 +96,12 @@ export const getTopCustomer = async (req: Request, res: Response) => {
       }
     }
 
-    const userData = (await UserDynamo.get(topCustomerId)) as unknown as
+    /*const userData = (await UserDynamo.get(topCustomerId)) as unknown as
       | { email?: string }
-      | undefined;
+      | undefined;*/
+    const userData = await User.findByPk(topCustomerId) as unknown as
+      | { email?: string }
+      | undefined;;
 
     return res.status(200).json({
       topCustomer: topCustomerId,

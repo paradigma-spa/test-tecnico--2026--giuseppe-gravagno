@@ -1,5 +1,5 @@
 import { type Request, type Response } from "express";
-import { DiscountDynamo } from "../models/discountModel";
+import { Discount } from "../models/discountModel";
 import { randomUUID } from "crypto";
 
 const parseExpiresAtToEpochSeconds = (expiresAt: unknown) => {
@@ -13,7 +13,8 @@ const parseExpiresAtToEpochSeconds = (expiresAt: unknown) => {
 
 export const getDiscount = async (req: Request, res: Response) => {
   try {
-    const allDiscounts = await DiscountDynamo.scan().exec();
+    //const allDiscounts = await DiscountDynamo.scan().exec();
+    const allDiscounts = await Discount.findAll();
     return res.status(200).json({ allDiscounts });
   } catch (error) {
     res.status(500).json({ message: "Errore interno server" });
@@ -32,7 +33,7 @@ export const createDiscount = async (req: Request, res: Response) => {
         .json({ message: "Formato data expiresAt non valido" });
     }
 
-    const newDiscount = new DiscountDynamo({
+    /*const newDiscount = new DiscountDynamo({
       userId,
       couponId: randomUUID(),
       coupon,
@@ -41,7 +42,18 @@ export const createDiscount = async (req: Request, res: Response) => {
       enabled,
       expiresAt: expiresAtEpochSeconds,
     });
-    await newDiscount.save();
+    await newDiscount.save();*/
+
+    const newDiscount = await Discount.create({
+      userId,
+      couponId: randomUUID(),
+      coupon,
+      couponValue,
+      usageCount,
+      enabled,
+      expiresAt: expiresAtEpochSeconds,
+    });
+
     return res
       .status(201)
       .json({ message: "Discount created successfully", newDiscount });
@@ -54,25 +66,31 @@ export const updateDiscont = async (req: Request, res: Response) => {
   try {
     const couponId = req.params.couponId;
     const id = Array.isArray(couponId) ? couponId[0] : couponId;
+    const userId = req.body.userId || req.query.userId;
 
-    if (!id) {
-      return res.status(400).json({ message: "Id coupon mancante" });
+    if (!id || !userId) {
+      return res.status(400).json({ message: "Id coupon o userId mancante" });
     }
 
     const { enabled, usageCount, expiresAt } = req.body;
 
-    const foundCoupons = await DiscountDynamo.scan("couponId")
+    /*const foundCoupons = await DiscountDynamo.scan("couponId")
       .eq(id)
       .limit(1)
-      .exec();
-    const coupon = foundCoupons[0] as
-      | { userId: string; couponId: string }
-      | undefined;
+      .exec();*/
+
+    const coupon = await Discount.findOne({ where: { id, userId } });
+
+    //const coupon = foundCoupons[0] as
+    //  | { userId: string; couponId: string }
+    //  | undefined;
 
     if (!coupon) {
       return res
         .status(404)
-        .json({ message: `Nessun coupon presente con l'id: ${id}` });
+        .json({
+          message: `Nessun coupon presente con l'id: ${id} e userId: ${userId}`,
+        });
     }
 
     const updates: {
@@ -96,10 +114,12 @@ export const updateDiscont = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Nessun campo da aggiornare" });
     }
 
-    await DiscountDynamo.update(
+    /*await DiscountDynamo.update(
       { userId: coupon.userId, couponId: coupon.couponId },
       updates,
-    );
+    );*/
+
+    await Discount.update(updates, { where: { id, userId } });
 
     return res.status(200).json({ message: "Coupon modificato correttamente" });
   } catch (error) {
@@ -112,29 +132,32 @@ export const deleteDiscount = async (req: Request, res: Response) => {
   try {
     const couponId = req.params.couponId;
     const id = Array.isArray(couponId) ? couponId[0] : couponId;
+    const userId = req.body.userId || req.query.userId;
 
-    if (!id) {
-      return res.status(400).json({ message: "Id coupon mancante" });
+    if (!id || !userId) {
+      return res.status(400).json({ message: "Id coupon o userId mancante" });
     }
 
-    const foundCoupons = await DiscountDynamo.scan("couponId")
+    /*const foundCoupons = await DiscountDynamo.scan("couponId")
       .eq(id)
       .limit(1)
-      .exec();
-    const coupon = foundCoupons[0] as
-      | { userId: string; couponId: string }
-      | undefined;
+      .exec();*/
+
+    const coupon = await Discount.findOne({ where: { id, userId } });
+
+    //const coupon = foundCoupons[0] as
+    //  | { userId: string; couponId: string }
+    //  | undefined;
 
     if (!coupon) {
       return res
         .status(404)
-        .json({ message: `Nessun coupon presente con l'id: ${id}` });
+        .json({
+          message: `Nessun coupon presente con l'id: ${id} e userId: ${userId}`,
+        });
     }
 
-    await DiscountDynamo.delete({
-      userId: coupon.userId,
-      couponId: coupon.couponId,
-    });
+    await Discount.destroy({ where: { id, userId } });
 
     return res.status(200).json({ message: "Coupon eliminato correttamente" });
   } catch (error) {
