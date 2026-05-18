@@ -1,24 +1,24 @@
-import { OrderDynamo } from "../../../models/orderModel";
+import { Order } from "../../../models/orderModel";
+import { OrderStatusPayload } from "../types/OrderStatusPayload";
 
 type GetOrderStatusEvent = {
-  action: string;
   orderId: string;
-};
-
-type GetOrderStatusResponse = {
-  id?: string;
-  status?: string;
-  nextStatusAt?: number | null;
 };
 
 export const viewOrderStatusService = async (
   event: GetOrderStatusEvent,
-): Promise<GetOrderStatusResponse> => {
-  const orderStatus = await OrderDynamo.get(event.orderId);
+): Promise<OrderStatusPayload> => {
+  const orderStatus = await Order.findByPk(
+    event.orderId,
+  );
+
+  if (!orderStatus) {
+    throw new Error(`Ordine con id ${event.orderId} non trovato`);
+  }
 
   return {
-    id: orderStatus?.id,
-    status: orderStatus?.status,
-    nextStatusAt: orderStatus?.nextStatusAt ?? null,
+    id: orderStatus.get("id") as string,
+    status: orderStatus.get("status") as string,
+    nextStatusAt: orderStatus.get("nextStatusAt") as number | null ,
   };
 };

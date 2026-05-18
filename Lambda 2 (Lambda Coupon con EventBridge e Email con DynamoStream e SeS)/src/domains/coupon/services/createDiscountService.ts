@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { DiscountDynamo } from "../../../models/discountModel";
+import { Discount } from "../../../models/discountModel";
 import { DiscountInput } from "../types/couponEventPayload";
 
 const parseEventPayload = (payload: Record<string, unknown>): DiscountInput => {
@@ -55,17 +55,15 @@ const parseEventPayload = (payload: Record<string, unknown>): DiscountInput => {
 export const createDiscountFromPayload = async (payload: Record<string, unknown>) => {
   const data = parseEventPayload(payload);
 
-  const newDiscount = new DiscountDynamo({
-    userId: data.userId,
-    couponId: randomUUID(),
+  const newDiscount = await Discount.create({
+    id: randomUUID(),
+    userId: data.userId, 
     coupon: data.coupon,
     couponValue: data.couponValue,
     usageCount: data.usageCount,
     enabled: data.enabled,
     expiresAt: data.expiresAt,
   });
-
-  await newDiscount.save();
-
+  
   return newDiscount;
 };

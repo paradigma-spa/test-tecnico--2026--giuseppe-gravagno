@@ -20,7 +20,6 @@ type OrderOwner = { userId: string };
 
 export const getOrders = async (req: Request, res: Response) => {
   try {
-    //const allOrders = await OrderDynamo.scan().exec();
     const allOrders = await Order.findAll()
     return res.status(200).json({ allOrders });
   } catch (error) {
@@ -85,7 +84,6 @@ export const newOrder = async (req: Request, res: Response) => {
         userId: req.user.id,
       };
 
-      //const savedOrder = await OrderDynamo.create(orderData);
       const savedOrder= await Order.create(orderData)
 
 
@@ -214,11 +212,6 @@ export const getMyOrder = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Utente non autenticato" });
     }
 
-    /*const orders = await OrderDynamo.query("userId")
-      .using("UserOrdersIndex")
-      .eq(req.user.id)
-      .exec();*/
-
       const orders = await Order.findAll({where:{userId: req.user?.id}})
 
     return res.status(200).json({ orders });
@@ -230,7 +223,6 @@ export const getMyOrder = async (req: Request, res: Response) => {
 export const getMostPopularOrder = async (req: Request, res: Response) => {
   try {
 
-    //const orders = await OrderDynamo.scan().exec();
     const orders= await Order.findAll()
 
     const counters = new Map<string, number>();
@@ -351,19 +343,6 @@ export const getStatus = async (req: Request, res: Response) => {
     
     return res.status(200).json(payload);
 
-    /*const order = (await OrderDynamo.get(
-      orderId,
-    )) as unknown as OrderStatusPayload;
-
-    if (!order) {
-      return res.status(404).json({ message: "Ordine non trovato" });
-    }
-
-    return res.status(200).json({
-      id: order.id,
-      status: order.status,
-      nextStatusAt: order.nextStatusAt ?? null,
-    });*/
   } catch (error) {
     return res.status(500).json({ message: "Errore server" });
   }

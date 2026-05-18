@@ -1,6 +1,6 @@
 import type { DynamoDBStreamEvent } from "aws-lambda";
 import { readModifyPayloads } from "../utils/readModifyPayloads";
-import { DiscountDynamo } from "../../../models/discountModel";
+import { Discount } from "../../../models/discountModel";
 import { couponModifyPayload } from "../types/couponModifyPayload";
 
 export const applyCouponStateChangeService = async (
@@ -16,9 +16,9 @@ export const applyCouponStateChangeService = async (
 
     if (!shouldDisable) return null;
 
-    await DiscountDynamo.update(
-      { userId: item.newItem.userId, couponId: item.newItem.couponId },
+    await Discount.update(
       { enabled: false },
+      {where: {id: item.newItem.couponId ,userId: item.newItem.userId} }
     );
 
     return {

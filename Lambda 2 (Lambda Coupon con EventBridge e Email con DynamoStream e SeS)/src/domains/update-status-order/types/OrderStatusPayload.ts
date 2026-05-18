@@ -1,5 +1,5 @@
 export type OrderStatusPayload = {
   id: string;
   status: string;
-  nextStatusAt: number;
+  nextStatusAt: number | null;
 };

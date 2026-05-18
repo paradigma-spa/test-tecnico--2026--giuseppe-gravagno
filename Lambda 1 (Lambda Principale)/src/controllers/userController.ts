@@ -6,7 +6,6 @@ import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 export const allUsers = async (req: Request, res: Response) => {
   try {
     
-    //const allUsers = await UserDynamo.scan().exec();
     const allUsers = await User.findAll()
 
     return res.status(200).json({ allUsers });
@@ -36,14 +35,12 @@ export const updateRole = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "newRole non valido" });
     }
 
-    //const targetUser = await UserDynamo.get(userId);
     const targetUser = await User.findByPk(userId)
 
     if (!targetUser) {
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
-    //await UserDynamo.update(userId, { role: newRole });
     await User.update({ role: newRole }, {where: {id: userId}});
 
     return res.status(200).json({ message: `Ruolo aggiornato a ${newRole}` });
@@ -63,7 +60,6 @@ export const getTopCustomer = async (req: Request, res: Response) => {
     const start = startDate ? new Date(startDate as string) : oneMonthAgo;
     const end = endDate ? new Date(endDate as string) : now;
 
-    //const orders = await OrderDynamo.scan().exec();
     const orders = await Order.findAll()
 
     const counters = new Map<string, number>();
@@ -96,9 +92,6 @@ export const getTopCustomer = async (req: Request, res: Response) => {
       }
     }
 
-    /*const userData = (await UserDynamo.get(topCustomerId)) as unknown as
-      | { email?: string }
-      | undefined;*/
     const userData = await User.findByPk(topCustomerId) as unknown as
       | { email?: string }
       | undefined;;

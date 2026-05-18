@@ -13,7 +13,6 @@ const parseExpiresAtToEpochSeconds = (expiresAt: unknown) => {
 
 export const getDiscount = async (req: Request, res: Response) => {
   try {
-    //const allDiscounts = await DiscountDynamo.scan().exec();
     const allDiscounts = await Discount.findAll();
     return res.status(200).json({ allDiscounts });
   } catch (error) {
@@ -32,17 +31,6 @@ export const createDiscount = async (req: Request, res: Response) => {
         .status(400)
         .json({ message: "Formato data expiresAt non valido" });
     }
-
-    /*const newDiscount = new DiscountDynamo({
-      userId,
-      couponId: randomUUID(),
-      coupon,
-      couponValue,
-      usageCount,
-      enabled,
-      expiresAt: expiresAtEpochSeconds,
-    });
-    await newDiscount.save();*/
 
     const newDiscount = await Discount.create({
       userId,
@@ -74,16 +62,8 @@ export const updateDiscont = async (req: Request, res: Response) => {
 
     const { enabled, usageCount, expiresAt } = req.body;
 
-    /*const foundCoupons = await DiscountDynamo.scan("couponId")
-      .eq(id)
-      .limit(1)
-      .exec();*/
 
     const coupon = await Discount.findOne({ where: { id, userId } });
-
-    //const coupon = foundCoupons[0] as
-    //  | { userId: string; couponId: string }
-    //  | undefined;
 
     if (!coupon) {
       return res
@@ -114,11 +94,6 @@ export const updateDiscont = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Nessun campo da aggiornare" });
     }
 
-    /*await DiscountDynamo.update(
-      { userId: coupon.userId, couponId: coupon.couponId },
-      updates,
-    );*/
-
     await Discount.update(updates, { where: { id, userId } });
 
     return res.status(200).json({ message: "Coupon modificato correttamente" });
@@ -138,16 +113,7 @@ export const deleteDiscount = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Id coupon o userId mancante" });
     }
 
-    /*const foundCoupons = await DiscountDynamo.scan("couponId")
-      .eq(id)
-      .limit(1)
-      .exec();*/
-
     const coupon = await Discount.findOne({ where: { id, userId } });
-
-    //const coupon = foundCoupons[0] as
-    //  | { userId: string; couponId: string }
-    //  | undefined;
 
     if (!coupon) {
       return res
