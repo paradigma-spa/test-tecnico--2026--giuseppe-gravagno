@@ -1,8 +1,9 @@
-import { DiscountDynamo } from "../models/discountModel";
+import { Discount } from "../models/discountModel";
+import { enqueueCouponStateCheck } from "./sqsService";
 
 type CouponEntity = {
+  id: string;
   userId: string;
-  couponId: string;
   coupon: string;
   couponValue: number;
   usageCount: number;
@@ -16,27 +17,40 @@ export const findValidCouponByCode = async (
 ) => {
   const normalized = couponCode.trim().toLowerCase();
 
-  const results = (await DiscountDynamo.query("userId")
-    .eq(userId)
-    .exec()) as unknown as CouponEntity[];
+  const results = await Discount.findOne({
+    where: { userId: userId, coupon: normalized },
+  });
 
-  const found = results.find(
-    (item) => (item.coupon ?? "").trim().toLowerCase() === normalized,
-  );
-  if (!found) return null;
+  if (!results) return null;
 
-  return found;
+  return {
+    id: results.get("id"),
+    userId: results.get("userId"),
+    coupon: results.get("coupon"),
+    couponValue: results.get("couponValue"),
+    usageCount: results.get("usageCount"),
+    enabled: results.get("enabled"),
+    expiresAt: results.get("expiresAt"),
+  } as CouponEntity;
 };
 
 export const decrementCouponUsage = async (
   userId: string,
-  couponId: string,
+  id: string,
   currentUsageCount: number,
 ) => {
-  await DiscountDynamo.update(
-    { userId, couponId },
+  await Discount.update(
     { usageCount: currentUsageCount - 1 },
+    { where: { userId, id } },
   );
+  if (currentUsageCount === 1) {
+    await enqueueCouponStateCheck({
+      eventType: "coupon-state-check",
+      discountId: id,
+      userId: userId,
+      usageCountAfterUpdate: 0,
+    });
+  }
 };
 
 export const applyCouponToPrice = async (

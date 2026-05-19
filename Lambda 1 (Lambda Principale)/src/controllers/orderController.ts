@@ -70,7 +70,7 @@ export const newOrder = async (req: Request, res: Response) => {
 
       await decrementCouponUsage(
         req.user.id,
-        ckeckCoupon.couponId,
+        ckeckCoupon.id,
         ckeckCoupon.usageCount,
       );
 
@@ -80,7 +80,7 @@ export const newOrder = async (req: Request, res: Response) => {
         quantity,
         price: priceFinal,
         coupon: ckeckCoupon.coupon,
-        couponId: ckeckCoupon.couponId,
+        couponId: ckeckCoupon.id,
         userId: req.user.id,
       };
 

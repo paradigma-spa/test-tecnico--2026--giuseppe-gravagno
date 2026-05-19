@@ -1,32 +1,28 @@
-import type { DynamoDBStreamEvent } from "aws-lambda";
+import type { SQSEvent } from "aws-lambda";
 import { readModifyPayloads } from "../utils/readModifyPayloads";
 import { Discount } from "../../../models/discountModel";
-import { couponModifyPayload } from "../types/couponModifyPayload";
+import { StateMessage } from "../types/couponStateCheckMessage";
 
 export const applyCouponStateChangeService = async (
-  event: DynamoDBStreamEvent,
-): Promise<couponModifyPayload[]> => {
+  event: SQSEvent,
+): Promise<StateMessage[]> => {
   const payloads = readModifyPayloads(event);
 
   const modifyPayloads = payloads.map(async (item) => {
-    const shouldDisable =
-      item.oldItem.usageCount > 0 &&
-      item.newItem.usageCount === 0 &&
-      item.newItem.enabled === true;
+    const shouldDisable = item.usageCountAfterUpdate === 0
 
     if (!shouldDisable) return null;
 
     await Discount.update(
       { enabled: false },
-      {where: {id: item.newItem.couponId ,userId: item.newItem.userId} }
+      {where: {id: item.discountId ,userId: item.userId} }
     );
 
     return {
-      ...item.newItem,
-      enabled: false,
+      ...item,
     };
   });
 
   const results = await Promise.all(modifyPayloads);
-  return results.filter((item): item is couponModifyPayload => item !== null);
+  return results.filter((item): item is StateMessage => item !== null);
 };

@@ -6,9 +6,6 @@ const accountId = "847041281071";
 const layerName = "serverLayer";
 const bucketName = "order-bill-s3";
 const layerVersion = "9";
-//const usersTableName = `${projectName}-${"${sls:stage}"}-users`;
-//const ordersTableName = `${projectName}-${"${sls:stage}"}-orders`;
-//const discountsTableName = `${projectName}-${"${sls:stage}"}-discounts`;
 
 const serverlessConfig: AWS =
   process.env.DEPLOY === "functions"
@@ -23,58 +20,19 @@ const serverlessConfig: AWS =
           region,
           tags: { name: "giuseppe-gravagno" },
           environment: {
-//          USERS_TABLE: usersTableName,
-//          ORDERS_TABLE: ordersTableName,
-//          DISCOUNTS_TABLE: discountsTableName,
             BUCKET_NAME: "${env:BUCKET_NAME, ''}",
             ORDER_EMAIL_QUEUE_URL: "${env:ORDER_EMAIL_QUEUE_URL, ''}",
+            COUPON_STATE_QUEUE_URL: "${env:COUPON_STATE_QUEUE_URL, ''}",
             EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
             EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
             EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
-            UPDATE_STATUS_ORDER_LAMBDA_NAME: "${env:UPDATE_STATUS_ORDER_LAMBDA_NAME, ''}",
-            ORDER_COUPON_USER_DB_SQL: "${env:ORDER_COUPON_USER_DB_SQL, ''}"
+            UPDATE_STATUS_ORDER_LAMBDA_NAME:
+              "${env:UPDATE_STATUS_ORDER_LAMBDA_NAME, ''}",
+            ORDER_COUPON_USER_DB_SQL: "${env:ORDER_COUPON_USER_DB_SQL, ''}",
           },
           iam: {
             role: {
               statements: [
-                /*{
-                  Effect: "Allow",
-                  Action: [
-                    "dynamodb:GetItem",
-                    "dynamodb:PutItem",
-                    "dynamodb:UpdateItem",
-                    "dynamodb:DeleteItem",
-                    "dynamodb:ConditionCheckItem",
-                    "dynamodb:Query",
-                    "dynamodb:Scan",
-                  ],
-                  Resource: [
-                    { "Fn::GetAtt": ["UsersTable", "Arn"] },
-                    {
-                      "Fn::Join": [
-                        "",
-                        [{ "Fn::GetAtt": ["UsersTable", "Arn"] }, "/index/*"],
-                      ],
-                    },
-                    { "Fn::GetAtt": ["OrdersTable", "Arn"] },
-                    {
-                      "Fn::Join": [
-                        "",
-                        [{ "Fn::GetAtt": ["OrdersTable", "Arn"] }, "/index/*"],
-                      ],
-                    },
-                    { "Fn::GetAtt": ["DiscountsTable", "Arn"] },
-                    {
-                      "Fn::Join": [
-                        "",
-                        [
-                          { "Fn::GetAtt": ["DiscountsTable", "Arn"] },
-                          "/index/*",
-                        ],
-                      ],
-                    },
-                  ],
-                },*/
                 {
                   Effect: "Allow",
                   Action: ["secretsmanager:GetSecretValue"],
@@ -82,7 +40,7 @@ const serverlessConfig: AWS =
                 },
                 {
                   Effect: "Allow",
-                  Action : ["lambda:InvokeFunction"],
+                  Action: ["lambda:InvokeFunction"],
                   Resource: "*",
                 },
                 {
@@ -93,6 +51,11 @@ const serverlessConfig: AWS =
                     "sqs:DeleteMessage",
                   ],
                   Resource: `arn:aws:sqs:${region}:${accountId}:orderQueue`,
+                },
+                {
+                  Effect: "Allow",
+                  Action: ["sqs:SendMessage", "sqs:GetQueueAttributes"],
+                  Resource: `arn:aws:sqs:${region}:${accountId}:stateDiscountQueue`,
                 },
                 {
                   Effect: "Allow",
@@ -139,14 +102,12 @@ const serverlessConfig: AWS =
             environment: {
               ACCOUNT_ID: accountId,
               LAYER_VERSION: layerVersion,
-//              USERS_TABLE: usersTableName,
-//              ORDERS_TABLE: ordersTableName,
-//              DISCOUNTS_TABLE: discountsTableName,
               ORDER_EMAIL_QUEUE_URL: "${env:ORDER_EMAIL_QUEUE_URL, ''}",
               EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
               EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
               EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
-              UPDATE_STATUS_ORDER_LAMBDA_NAME: "${env:UPDATE_STATUS_ORDER_LAMBDA_NAME, ''}",
+              UPDATE_STATUS_ORDER_LAMBDA_NAME:
+                "${env:UPDATE_STATUS_ORDER_LAMBDA_NAME, ''}",
             },
             events: [
               { http: { method: "any", path: "/" } },
@@ -156,87 +117,6 @@ const serverlessConfig: AWS =
         },
         resources: {
           Resources: {
-            /*UsersTable: {
-              Type: "AWS::DynamoDB::Table",
-              Properties: {
-                TableName: usersTableName,
-                BillingMode: "PAY_PER_REQUEST",
-                AttributeDefinitions: [
-                  { AttributeName: "id", AttributeType: "S" },
-                  { AttributeName: "email", AttributeType: "S" },
-                ],
-                KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
-                GlobalSecondaryIndexes: [
-                  {
-                    IndexName: "EmailIndex",
-                    KeySchema: [{ AttributeName: "email", KeyType: "HASH" }],
-                    Projection: { ProjectionType: "ALL" },
-                  },
-                ],
-              },
-            },
-            OrdersTable: {
-              Type: "AWS::DynamoDB::Table",
-              Properties: {
-                TableName: ordersTableName,
-                BillingMode: "PAY_PER_REQUEST",
-                StreamSpecification: {
-                  StreamViewType: "NEW_IMAGE",
-                },
-                AttributeDefinitions: [
-                  { AttributeName: "id", AttributeType: "S" },
-                  { AttributeName: "userId", AttributeType: "S" },
-                  { AttributeName: "createdAt", AttributeType: "S" },
-                  { AttributeName: "status", AttributeType: "S" },
-                  { AttributeName: "nextStatusAt", AttributeType: "N" },
-                ],
-                KeySchema: [{ AttributeName: "id", KeyType: "HASH" }],
-                GlobalSecondaryIndexes: [
-                  {
-                    IndexName: "UserOrdersIndex",
-                    KeySchema: [
-                      { AttributeName: "userId", KeyType: "HASH" },
-                      { AttributeName: "createdAt", KeyType: "RANGE" },
-                    ],
-                    Projection: { ProjectionType: "ALL" },
-                  },
-                  {
-                    IndexName: "StatusIndex",
-                    KeySchema: [
-                      { AttributeName: "status", KeyType: "HASH" },
-                      { AttributeName: "nextStatusAt", KeyType: "RANGE" },
-                    ],
-                    Projection: { ProjectionType: "ALL" },
-                  },
-                ],
-              },
-            },
-            DiscountsTable: {
-              Type: "AWS::DynamoDB::Table",
-              Properties: {
-                TableName: discountsTableName,
-                BillingMode: "PAY_PER_REQUEST",
-                AttributeDefinitions: [
-                  { AttributeName: "userId", AttributeType: "S" },
-                  { AttributeName: "couponId", AttributeType: "S" },
-                  { AttributeName: "createdAt", AttributeType: "S" },
-                ],
-                KeySchema: [
-                  { AttributeName: "userId", KeyType: "HASH" },
-                  { AttributeName: "couponId", KeyType: "RANGE" },
-                ],
-                GlobalSecondaryIndexes: [
-                  {
-                    IndexName: "UserDiscountsIndex",
-                    KeySchema: [
-                      { AttributeName: "userId", KeyType: "HASH" },
-                      { AttributeName: "createdAt", KeyType: "RANGE" },
-                    ],
-                    Projection: { ProjectionType: "ALL" },
-                  },
-                ],
-              },
-            },*/
           },
         },
       }

@@ -1,6 +1,5 @@
 import { Op } from "sequelize";
 import { Order } from "../../../models/orderModel";
-//import {OrderStatusPayload} from "../types/OrderStatusPayload";
 
 export const updateOrderStatus = async () => {
   try {
@@ -61,15 +60,6 @@ export const updateOrderStatus = async () => {
         },
       },
     );
-
-
-
-    /*await Promise.all([
-      ...orderCreatedMap,
-      ...orderProcessingMap,
-      ...orderPreparationMap,
-      ...orderReadyMap,
-    ]);*/
 
   } catch (error) {
     console.error(
