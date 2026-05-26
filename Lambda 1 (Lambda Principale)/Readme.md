@@ -62,7 +62,9 @@ La tabella ordini (`OrdersTable`) espone anche DynamoDB Streams con:
 
 - `StreamViewType: NEW_IMAGE`
 
-Questa configurazione serve per integrare Lambda 2, che ascolta i nuovi ordini e invia mail tramite SES.
+Nel setup corrente, l'integrazione operativa con Lambda 2 per le email ordine avviene tramite SQS.
+
+La configurazione DynamoDB Streams viene mantenuta come supporto legacy/tecnico per eventuali riconversioni future verso un flusso basato su stream.
 
 ## Variabili ambiente
 

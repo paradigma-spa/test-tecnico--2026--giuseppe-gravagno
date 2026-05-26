@@ -1,17 +1,11 @@
-//import { OrderDynamo } from "../../../models/orderModel";
 import axios from "axios";
 import { AllOrderRoot } from "../types/OrderRouteType";
 
 export const getLastUserIdFromOrders = async () => {
-  /*const orders = (await OrderDynamo.scan().exec()) as Array<{
-    userId?: string;
-    createdAt?: string;
-  }>;*/
-
   try {
     const response = await axios.get<AllOrderRoot>(
       `${process.env.LAMBDA1_BASE_URL}/orders`,
-    ); //chiamata al server ec2
+    );
 
     const orders = response.data.allOrders;
 
@@ -30,6 +24,6 @@ export const getLastUserIdFromOrders = async () => {
     return latestOrder?.userId?.trim() ?? null;
   } catch (error) {
     console.error("Errore chiamando /orders", error);
-    return null;   
+    return null;
   }
 };

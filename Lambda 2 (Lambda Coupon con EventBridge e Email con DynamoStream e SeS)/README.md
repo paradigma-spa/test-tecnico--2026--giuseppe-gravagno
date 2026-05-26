@@ -17,7 +17,20 @@ In passato, questa Lambda utilizzava DynamoDB Streams per:
 **Cambiamento:**
 
 - DynamoDB Streams è stato sostituito da SQS per migliorare la modularità e la scalabilità.
-- I file relativi a DynamoDB Streams (`emailStreamsHandler.ts` e `readInsertPayloads.ts`) sono stati deprecati e rimossi.
+- I file legacy relativi a DynamoDB Streams (`emailStreamsHandler.ts` e `readInsertPayloads.ts`) sono mantenuti nel repository ma non sono collegati al flusso runtime corrente.
+
+### File legacy mantenuti
+
+Per facilitare eventuali rollback/riconversioni verso DynamoDB Streams, alcuni file storici sono lasciati nel codice:
+
+- `src/domains/orders-email/handler/emailStreamsHandler.ts`
+- `src/domains/orders-email/utils/readInsertPayloads.ts`
+
+Stato attuale:
+
+- non importati da `src/mainHandler.ts`
+- non usati dal deploy corrente
+- da considerare solo come riferimento tecnico per una conversione futura
 
 ### Permessi IAM
 
@@ -60,6 +73,7 @@ Note:
 
 - `EVENTBRIDGE_TARGET_ARN` deve puntare alla Lambda effettivamente deployata
 - `ORDER_EMAIL_QUEUE_ARN` deve essere l'ARN della coda SQS usata da Lambda 1 per accodare eventi email ordine
+- `LAMBDA1_BASE_URL` deve puntare all'endpoint API Gateway di Lambda 1 (`https://.../dev`), non a un'istanza EC2
 - `SES_FROM_EMAIL` deve essere una mail verificata su SES
 - `PDF_BUCKET_NAME` e' valorizzata dalla configurazione serverless (`order-bill-s3`)
 
@@ -96,9 +110,9 @@ npm run deploy:functions:dev
 
 ### Flusso coupon-state
 
-1. la tabella coupon emette un evento `MODIFY` su DynamoDB Streams
-2. `mainHandler` riconosce stream con `OldImage` + `NewImage`
-3. viene eseguito `couponStateHandler`
+1. Lambda 1 accoda messaggi di stato coupon su SQS
+2. la Lambda viene invocata dal trigger SQS
+3. `mainHandler` instrada al `couponStateHandler`
 4. i coupon con `usageCount` arrivato a 0 vengono disabilitati automaticamente
 
 ## Dipendenze principali
