@@ -270,7 +270,7 @@ export const getOrderBills = async (req: Request, res: Response) => {
     if (!(await data).Contents) {
       return res
         .status(404)
-        .json({ message: "Non è stato trovato alcun dato per il tuo user ID" });
+        .json({ message: "Non è stato trovato alcun dato per il tuo user ID"});
     }
 
     const billsMap = (await data).Contents?.map(async (file) => {

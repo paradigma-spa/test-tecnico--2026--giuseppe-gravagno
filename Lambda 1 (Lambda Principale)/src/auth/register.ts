@@ -1,8 +1,7 @@
 import { randomUUID } from "crypto";
 import { type Request, type Response } from "express";
-import { UserDynamo } from "../models/userModel";
-import * as bcrypt from 'bcrypt';
-
+import { User } from "../models/userModel";
+import * as bcrypt from "bcrypt";
 
 export const userRegister = async (req: Request, res: Response) => {
   try {
@@ -11,25 +10,22 @@ export const userRegister = async (req: Request, res: Response) => {
     const newPassword = req.body.password;
     const role = "user";
 
-    const existing = await UserDynamo.query("email")
-      .using("EmailIndex")
-      .eq(newEmail)
-      .exec();
+    const existing = await User.findOne({ where: { email: newEmail } });
 
-    if (existing.count > 0) {
+    if (existing) {
       return res
         .status(409)
         .json({ message: "Non puoi usare questa mail, è già registrata" });
     }
 
-    const saltRounds = 10
+    const saltRounds = 10;
 
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
     if (!hashedPassword) {
-        console.error('Error hashing password');
-    }     
+      console.error("Error hashing password");
+    }
 
-    await UserDynamo.create({
+    await User.create({
       id: randomUUID(),
       username: newUsername,
       email: newEmail,

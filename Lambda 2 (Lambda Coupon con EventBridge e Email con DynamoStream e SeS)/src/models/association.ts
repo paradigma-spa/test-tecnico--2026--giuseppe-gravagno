@@ -17,6 +17,6 @@ Order.belongsTo(User, { foreignKey: "userId", targetKey: "id" });
 //----------------------------------------
 
 // Un coupon (discount) può essere usato in molti ordini
-Discount.hasMany(Order, { foreignKey: "couponId", sourceKey: "couponId" });
+Discount.hasMany(Order, { foreignKey: "couponId", sourceKey: "id" });
 // Un ordine appartiene a un coupon
-Order.belongsTo(Discount, { foreignKey: "couponId", targetKey: "couponId" });
+Order.belongsTo(Discount, { foreignKey: "couponId", targetKey: "id" });

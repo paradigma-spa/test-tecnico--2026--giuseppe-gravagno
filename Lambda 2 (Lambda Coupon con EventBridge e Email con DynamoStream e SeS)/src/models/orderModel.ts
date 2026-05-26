@@ -1,148 +1,81 @@
-import { Sequelize, DataTypes } from "sequelize";
+import { DataTypes } from "sequelize";
 import { User } from "./userModel";
 import { Discount } from "./discountModel";
+import { sequelize } from "./sequelizeClient";
 
-const sequelize = new Sequelize(`${process.env.ORDER_COUPON_USER_DB_SQL}`, {
-  dialect: "mysql",
-});
-
-export const Order = sequelize.define("Order", {
-  
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
-    allowNull: false,
-  },
-
-  userId: {
-    type: DataTypes.UUID,
-    allowNull: false,
-    references: {
-      model: User,
-      key: "id",
+export const Order = sequelize.define(
+  "Order",
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+      allowNull: false,
     },
-    onUpdate: "CASCADE",
-    onDelete: "CASCADE",
-  },
 
-  couponId: {
-    type: DataTypes.UUID,
-    allowNull: false,
-    references:{
-      model: Discount,
-      key: "couponId"
+    userId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: User,
+        key: "id",
+      },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     },
-    onUpdate: "CASCADE",
-    onDelete: "CASCADE",
-  },
 
-  typeFood:{
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
+    couponId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: Discount,
+        key: "id",
+      },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    },
 
-  quantity: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
+    typeFood: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
 
-  price: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
+    quantity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
 
-  coupon: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    references:{
-      model: Discount,
-      key: "coupon"
-    }
-  },
+    price: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
 
-  status:{
-    type: DataTypes.ENUM("CREATED", "PROCESSING", "PREPARATION", "READY", "COMPLETED"),
-    allowNull: false,
-    defaultValue: "CREATED",
-  },
+    coupon: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
 
-  nextStatusAt: {
-    type: DataTypes.BIGINT,
-    allowNull: false,
-    defaultValue: () => Math.floor(Date.now() / 1000) + 600
-  }
-},
+    status: {
+      type: DataTypes.ENUM(
+        "CREATED",
+        "PROCESSING",
+        "PREPARATION",
+        "READY",
+        "COMPLETED",
+      ),
+      allowNull: false,
+      defaultValue: "CREATED",
+    },
+
+    nextStatusAt: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      defaultValue: () => Math.floor(Date.now() / 1000) + 600,
+    },
+  },
   {
     timestamps: true,
     createdAt: "createdAt",
-    updatedAt: "updatedAt"
-  }
+    updatedAt: "updatedAt",
+  },
 );
-
-/*import dynamoose from "dynamoose";
-
-const orderDynamoSchema = new dynamoose.Schema({
-  id: {
-    type: String,
-    hashKey: true,
-    required: true,
-  },
-  typeFood: {
-    type: String,
-    required: true,
-  },
-  quantity: {
-    type: Number,
-    required: true,
-  },
-  price: {
-    type: Number,
-    required: true,
-  },
-  couponId: {
-    type: String,
-  },
-  coupon: {
-    type: String,
-  },
-  userId: {
-    type: String,
-    required: true,
-    index: {
-      name: "UserOrdersIndex",
-      type: "global",
-      rangeKey: "createdAt",
-    },
-  },
-  createdAt: {
-    type: String,
-    required: true,
-    default: () => new Date().toISOString(),
-  },
-  status: {
-    type: String,
-    required: true,
-    default: "CREATED",
-    enum: ["CREATED", "PROCESSING", "PREPARATION", "READY", "COMPLETED"],
-    index: {
-      name: "StatusIndex",
-      type: "global",
-      rangeKey: "nextStatusAt",
-    },
-  },
-  nextStatusAt: {
-    type: Number,
-    required: true,
-    default: () => Math.floor(Date.now() / 1000) + 300,
-  },
-});
-
-export const OrderDynamo = dynamoose.model(
-  process.env.ORDERS_TABLE || "OrdersTable",
-  orderDynamoSchema,
-  {
-    create: false,
-    waitForActive: false,
-  },
-);*/

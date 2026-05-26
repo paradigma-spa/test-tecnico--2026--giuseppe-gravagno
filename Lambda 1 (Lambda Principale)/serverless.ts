@@ -5,7 +5,7 @@ const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayer";
 const bucketName = "order-bill-s3";
-const layerVersion = "9";
+const layerVersion = "11";
 
 const serverlessConfig: AWS =
   process.env.DEPLOY === "functions"
@@ -17,11 +17,14 @@ const serverlessConfig: AWS =
         provider: {
           name: "aws",
           runtime,
+          timeout: 30,
+          memorySize: 512,
           region,
           tags: { name: "giuseppe-gravagno" },
           environment: {
             BUCKET_NAME: "${env:BUCKET_NAME, ''}",
             ORDER_EMAIL_QUEUE_URL: "${env:ORDER_EMAIL_QUEUE_URL, ''}",
+            STATE_MESSAGE_QUEUE_URL: "${env:STATE_MESSAGE_QUEUE_URL, ''}",
             COUPON_STATE_QUEUE_URL: "${env:COUPON_STATE_QUEUE_URL, ''}",
             EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
             EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
@@ -29,6 +32,10 @@ const serverlessConfig: AWS =
             UPDATE_STATUS_ORDER_LAMBDA_NAME:
               "${env:UPDATE_STATUS_ORDER_LAMBDA_NAME, ''}",
             ORDER_COUPON_USER_DB_SQL: "${env:ORDER_COUPON_USER_DB_SQL, ''}",
+            DB_NAME: "${env:DB_NAME, ''}",
+            DB_USER: "${env:DB_USER, ''}",
+            DB_PASSWORD: "${env:DB_PASSWORD, ''}",
+            DB_PORT: "${env:DB_PORT, '3306'}",
           },
           iam: {
             role: {
@@ -96,6 +103,8 @@ const serverlessConfig: AWS =
         functions: {
           lambda: {
             handler: "src/server.handler",
+            timeout: 30,
+            memorySize: 512,
             layers: [
               `arn:aws:lambda:${region}:${accountId}:layer:${layerName}:${layerVersion}`,
             ],
@@ -103,11 +112,17 @@ const serverlessConfig: AWS =
               ACCOUNT_ID: accountId,
               LAYER_VERSION: layerVersion,
               ORDER_EMAIL_QUEUE_URL: "${env:ORDER_EMAIL_QUEUE_URL, ''}",
+              STATE_MESSAGE_QUEUE_URL: "${env:STATE_MESSAGE_QUEUE_URL, ''}",
               EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
               EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
               EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
               UPDATE_STATUS_ORDER_LAMBDA_NAME:
                 "${env:UPDATE_STATUS_ORDER_LAMBDA_NAME, ''}",
+              ORDER_COUPON_USER_DB_SQL: "${env:ORDER_COUPON_USER_DB_SQL, ''}",
+              DB_NAME: "${env:DB_NAME, ''}",
+              DB_USER: "${env:DB_USER, ''}",
+              DB_PASSWORD: "${env:DB_PASSWORD, ''}",
+              DB_PORT: "${env:DB_PORT, '3306'}",
             },
             events: [
               { http: { method: "any", path: "/" } },
@@ -116,8 +131,7 @@ const serverlessConfig: AWS =
           },
         },
         resources: {
-          Resources: {
-          },
+          Resources: {},
         },
       }
     : {

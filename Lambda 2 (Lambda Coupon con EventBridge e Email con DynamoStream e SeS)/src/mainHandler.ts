@@ -6,6 +6,10 @@ import type { SQSEvent } from "aws-lambda";
 import { viewOrderStatusService } from "./domains/update-status-order/services/viewOrderStatusService";
 import { summaryUserHandler } from "./domains/summaryuser/handler/summaryUserHandler";
 import type { StateMessage } from "./domains/coupon-state/types/couponStateCheckMessage";
+import { sequelize } from "./models/sequelizeClient";
+import "./models/userModel";
+import "./models/discountModel";
+import "./models/orderModel";
 
 const isSqsEvent = (event: unknown): event is SQSEvent => {
   if (!event || typeof event !== "object" || !("Records" in event)) {

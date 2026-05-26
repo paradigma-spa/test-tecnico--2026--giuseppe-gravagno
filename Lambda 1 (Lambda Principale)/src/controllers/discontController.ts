@@ -2,13 +2,13 @@ import { type Request, type Response } from "express";
 import { Discount } from "../models/discountModel";
 import { randomUUID } from "crypto";
 
-const parseExpiresAtToEpochSeconds = (expiresAt: unknown) => {
+const parseExpiresAtToIsoString = (expiresAt: unknown) => {
   const parsed = Date.parse(String(expiresAt));
   if (Number.isNaN(parsed)) {
     return null;
   }
 
-  return parsed / 1000;
+  return new Date(parsed).toISOString();
 };
 
 export const getDiscount = async (req: Request, res: Response) => {
@@ -25,8 +25,8 @@ export const createDiscount = async (req: Request, res: Response) => {
     const { userId, coupon, couponValue, usageCount, enabled, expiresAt } =
       req.body;
 
-    const expiresAtEpochSeconds = parseExpiresAtToEpochSeconds(expiresAt);
-    if (expiresAtEpochSeconds === null) {
+    const expiresAtIso = parseExpiresAtToIsoString(expiresAt);
+    if (expiresAtIso === null) {
       return res
         .status(400)
         .json({ message: "Formato data expiresAt non valido" });
@@ -39,7 +39,7 @@ export const createDiscount = async (req: Request, res: Response) => {
       couponValue,
       usageCount,
       enabled,
-      expiresAt: expiresAtEpochSeconds,
+      expiresAt: expiresAtIso,
     });
 
     return res
@@ -76,18 +76,18 @@ export const updateDiscont = async (req: Request, res: Response) => {
     const updates: {
       enabled?: boolean;
       usageCount?: number;
-      expiresAt?: number;
+      expiresAt?: string;
     } = {};
     if (enabled !== undefined) updates.enabled = enabled;
     if (usageCount !== undefined) updates.usageCount = usageCount;
     if (expiresAt !== undefined) {
-      const expiresAtEpochSeconds = parseExpiresAtToEpochSeconds(expiresAt);
-      if (expiresAtEpochSeconds === null) {
+      const expiresAtIso = parseExpiresAtToIsoString(expiresAt);
+      if (expiresAtIso === null) {
         return res
           .status(400)
           .json({ message: "Formato data expiresAt non valido" });
       }
-      updates.expiresAt = expiresAtEpochSeconds;
+      updates.expiresAt = expiresAtIso;
     }
 
     if (Object.keys(updates).length === 0) {

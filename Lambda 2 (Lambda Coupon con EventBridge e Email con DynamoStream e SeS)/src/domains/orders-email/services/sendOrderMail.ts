@@ -69,7 +69,7 @@ export const sendOrderMail = async (message: OrderEmailMessage) => {
     },
   });
 
-  await s3Client.send(command);
+  await s3Client.send(command);     
 
   await transporter.sendMail({
     from,
