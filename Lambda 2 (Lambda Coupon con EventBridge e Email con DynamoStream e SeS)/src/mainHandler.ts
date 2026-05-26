@@ -1,13 +1,15 @@
 import { couponStateHandler } from "./domains/coupon-state/handler/couponStateHandler";
 import { handler as couponHandler } from "./domains/coupon/handlers/couponEventBridgeHandler";
 import { handler as updateOrderStatusHandler } from "./domains/update-status-order/handler/updateOrderStatusHandler";
-//import { handler as emailStreamsHandler } from "./domains/orders-email/handler/emailStreamsHandler";
 import { handler as emailSqsHandler } from "./domains/orders-email/handler/emailSqsHandler";
-import { DynamoDBRecord, DynamoDBStreamEvent, SQSEvent } from "aws-lambda";
-
-const isDynamoStreamEvent = (event: unknown): event is DynamoDBStreamEvent => {
-  return !!event && typeof event === "object" && "Records" in event;
-};
+import type { SQSEvent } from "aws-lambda";
+import { viewOrderStatusService } from "./domains/update-status-order/services/viewOrderStatusService";
+import { summaryUserHandler } from "./domains/summaryuser/handler/summaryUserHandler";
+import type { StateMessage } from "./domains/coupon-state/types/couponStateCheckMessage";
+import { sequelize } from "./models/sequelizeClient";
+import "./models/userModel";
+import "./models/discountModel";
+import "./models/orderModel";
 
 const isSqsEvent = (event: unknown): event is SQSEvent => {
   if (!event || typeof event !== "object" || !("Records" in event)) {
@@ -32,13 +34,52 @@ const isScheduledEvent = (event: unknown): boolean => {
   );
 };
 
-/*const isInsertNewImageRecord = (record: DynamoDBRecord): boolean =>
-  record.eventName === "INSERT" && !!record.dynamodb?.NewImage;*/
+const isGetOrderStatusEvent = (
+  event: unknown,
+): event is { action: string; orderId: string } => {
+  return (
+    !!event &&
+    typeof event === "object" &&
+    "action" in event &&
+    (event as any).action === "get-order-status" &&
+    "orderId" in event
+  );
+};
 
-const isModifyOldAndNewRecord = (record: DynamoDBRecord): boolean =>
-  record.eventName === "MODIFY" &&
-  !!record.dynamodb?.OldImage &&
-  !!record.dynamodb?.NewImage;
+const isGetSummaryUserEvent = (
+  event: unknown,
+): event is { action: string; userId: string } => {
+  return (
+    !!event &&
+    typeof event === "object" &&
+    "action" in event &&
+    (event as any).action === "get-summary-user" &&
+    "userId" in event
+  );
+};
+
+const isCouponStateMessage = (value: unknown): value is StateMessage => {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+
+  return (
+    v.eventType === "coupon-state-check" &&
+    typeof v.discountId === "string" &&
+    typeof v.userId === "string" &&
+    typeof v.usageCountAfterUpdate === "number"
+  );
+};
+
+const isCouponStateSqsEvent = (event: SQSEvent): boolean => {
+  return event.Records.every((record) => {
+    try {
+      const parsed = JSON.parse(record.body);
+      return isCouponStateMessage(parsed);
+    } catch {
+      return false;
+    }
+  });
+};
 
 export const handler = async (event: unknown) => {
   try {
@@ -46,37 +87,26 @@ export const handler = async (event: unknown) => {
       return updateOrderStatusHandler(event);
     }
 
+    if (isGetOrderStatusEvent(event)) {
+      return viewOrderStatusService(event);
+    }
+
+    if (isGetSummaryUserEvent(event)) {
+      return summaryUserHandler(event);
+    }
+
     if (isSqsEvent(event)) {
+      if (isCouponStateSqsEvent(event)) {
+        return couponStateHandler(event);
+      }
       return emailSqsHandler(event);
     }
 
-    if (!isDynamoStreamEvent(event)) {
-      return couponHandler(event);
-    }
-
-    /*if (event.Records.length > 0 && event.Records.every(isInsertNewImageRecord)) {
-    return emailStreamsHandler(event);
-  }*/
-
-    if (
-      event.Records.length > 0 &&
-      event.Records.every(isModifyOldAndNewRecord)
-    ) {
-      return couponStateHandler(event);
-    }
-
-    return {
-      body: JSON.stringify({ message: "Stream non gestito", processed: 0 }),
-    };
+    return couponHandler(event);
   } catch (error) {
     console.error("Errore nel handler principale", error);
-
     return {
       body: JSON.stringify({ message: "Errore interno" }),
     };
   }
 };
-
-/*
-emailStreamsHandler è stato sostituito da emailSqsHandler, che legge i messaggi da una coda SQS invece che direttamente dallo stream di DynamoDB.
-*/

@@ -1,10 +1,13 @@
 import { type Request, type Response } from "express";
-import { UserDynamo } from "../models/userModel";
-import { OrderDynamo } from "../models/orderModel";
+import { User } from "../models/userModel";
+import { Order } from "../models/orderModel";
+import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 
 export const allUsers = async (req: Request, res: Response) => {
   try {
-    const allUsers = await UserDynamo.scan().exec();
+    
+    const allUsers = await User.findAll()
+
     return res.status(200).json({ allUsers });
   } catch (error) {
     res.status(500).json({ message: "Errore interno server" });
@@ -32,12 +35,14 @@ export const updateRole = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "newRole non valido" });
     }
 
-    const targetUser = await UserDynamo.get(userId);
+    const targetUser = await User.findByPk(userId)
+
     if (!targetUser) {
       return res.status(404).json({ message: "Utente non trovato" });
     }
 
-    await UserDynamo.update(userId, { role: newRole });
+    await User.update({ role: newRole }, {where: {id: userId}});
+
     return res.status(200).json({ message: `Ruolo aggiornato a ${newRole}` });
   } catch (error) {
     return res.status(500).json({ message: "Errore server" });
@@ -55,7 +60,8 @@ export const getTopCustomer = async (req: Request, res: Response) => {
     const start = startDate ? new Date(startDate as string) : oneMonthAgo;
     const end = endDate ? new Date(endDate as string) : now;
 
-    const orders = await OrderDynamo.scan().exec();
+    const orders = await Order.findAll()
+
     const counters = new Map<string, number>();
 
     for (const order of orders) {
@@ -86,15 +92,60 @@ export const getTopCustomer = async (req: Request, res: Response) => {
       }
     }
 
-    const userData = (await UserDynamo.get(topCustomerId)) as unknown as
+    const userData = await User.findByPk(topCustomerId) as unknown as
       | { email?: string }
-      | undefined;
+      | undefined;;
 
     return res.status(200).json({
       topCustomer: topCustomerId,
       email: userData?.email,
       totalOrders,
     });
+  } catch (error) {
+    return res.status(500).json({ message: "Errore server" });
+  }
+};
+
+export const infoUserOrders = async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.userId;
+
+    if (!userId) {
+      return res.status(400).json({ message: "Id utente mancante" });
+    }
+
+    const lambdaClient = new LambdaClient({ region: "eu-south-1" });
+
+    const command = new InvokeCommand({
+      FunctionName: process.env.UPDATE_STATUS_ORDER_LAMBDA_NAME,
+      Payload: Buffer.from(
+        JSON.stringify({ action: "get-summary-user", userId }),
+      ),
+    });
+
+    const response = await lambdaClient.send(command);
+
+    if (!response.Payload) {
+      return res
+        .status(500)
+        .json({
+          message:
+            "Errore nella comunicazione con il servizio di aggiornamento stato ordine",
+        });
+    }
+    const payload = JSON.parse(Buffer.from(response.Payload).toString()) as {
+      totalOrders?: number;
+      totalSpent?: number;
+      totalQuantity?: number;
+      totalTypeFood?: number;
+      totalId?: number;
+    };
+
+    if (payload.totalOrders === undefined) {
+      return res.status(404).json({ message: "Summary utente non trovato" });
+    }
+
+    return res.status(200).json(payload);
   } catch (error) {
     return res.status(500).json({ message: "Errore server" });
   }

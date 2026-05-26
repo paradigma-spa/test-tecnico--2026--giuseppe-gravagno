@@ -1,7 +1,7 @@
-import { DynamoDBStreamEvent } from "aws-lambda";
+import { SQSEvent } from "aws-lambda";
 import { applyCouponStateChangeService } from "../services/applyCouponStateChangeService";
 
-export const couponStateHandler = async (event: DynamoDBStreamEvent) => {
+export const couponStateHandler = async (event: SQSEvent) => {
   try {
     const updatedCoupons = await applyCouponStateChangeService(event);
     return {

@@ -5,9 +5,7 @@ const region = "eu-south-1";
 const runtime = "nodejs20.x";
 const accountId = "847041281071";
 const layerName = "serverLayerCoupons";
-const layerVersion = "9";
-const discountsTableName = `order-api-${"${sls:stage}"}-discounts`;
-const ordersTableName = `order-api-${"${sls:stage}"}-orders`;
+const layerVersion = "12";
 const bucketName = "order-bill-s3";
 
 const serverlessConfig: AWS =
@@ -20,16 +18,23 @@ const serverlessConfig: AWS =
         provider: {
           name: "aws",
           runtime,
+          timeout: 60,
+          memorySize: 1024,
           region,
           tags: { name: "giuseppe-gravagno" },
           environment: {
-            DISCOUNTS_TABLE: discountsTableName,
-            ORDERS_TABLE: ordersTableName,
             PDF_BUCKET_NAME: bucketName,
+            LAMBDA1_BASE_URL: "${env:LAMBDA1_BASE_URL, ''}",
             ORDER_EMAIL_QUEUE_ARN: "${env:ORDER_EMAIL_QUEUE_ARN, ''}",
+            COUPON_STATE_QUEUE_URL: "${env:COUPON_STATE_QUEUE_URL, ''}",
             EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
             EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
             EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
+            ORDER_COUPON_USER_DB_SQL: "${env:ORDER_COUPON_USER_DB_SQL, ''}",
+            DB_NAME: "${env:DB_NAME, ''}",
+            DB_USER: "${env:DB_USER, ''}",
+            DB_PASSWORD: "${env:DB_PASSWORD, ''}",
+            DB_PORT: "${env:DB_PORT, '3306'}",
           },
           iam: {
             role: {
@@ -65,44 +70,11 @@ const serverlessConfig: AWS =
                 {
                   Effect: "Allow",
                   Action: [
-                    "dynamodb:GetItem",
-                    "dynamodb:PutItem",
-                    "dynamodb:UpdateItem",
-                    "dynamodb:DeleteItem",
-                    "dynamodb:Query",
-                    "dynamodb:Scan",
+                    "sqs:ReceiveMessage",
+                    "sqs:DeleteMessage",
+                    "sqs:GetQueueAttributes",
                   ],
-                  Resource: [
-                    {
-                      "Fn::Sub": `arn:aws:dynamodb:${region}:${accountId}:table/${discountsTableName}`,
-                    },
-                    {
-                      "Fn::Sub": `arn:aws:dynamodb:${region}:${accountId}:table/${discountsTableName}/index/*`,
-                    },
-                    {
-                      "Fn::Sub": `arn:aws:dynamodb:${region}:${accountId}:table/${ordersTableName}`,
-                    },
-                    {
-                      "Fn::Sub": `arn:aws:dynamodb:${region}:${accountId}:table/${ordersTableName}/index/*`,
-                    },
-                  ],
-                },
-                {
-                  Effect: "Allow",
-                  Action: [
-                    "dynamodb:DescribeStream",
-                    "dynamodb:GetRecords",
-                    "dynamodb:GetShardIterator",
-                    "dynamodb:ListStreams",
-                  ],
-                  Resource: [
-                    {
-                      "Fn::Sub": `arn:aws:dynamodb:${region}:${accountId}:table/${discountsTableName}/stream/*`,
-                    },
-                    {
-                      "Fn::Sub": `arn:aws:dynamodb:${region}:${accountId}:table/${ordersTableName}/stream/*`,
-                    },
-                  ],
+                  Resource: `arn:aws:sqs:${region}:${accountId}:stateDiscountQueue`,
                 },
                 {
                   Effect: "Allow",
@@ -144,18 +116,23 @@ const serverlessConfig: AWS =
         functions: {
           orderCouponEmailHandler: {
             handler: "src/mainHandler.handler",
-            //memorySize: 1024,
-            //timeout: 30,
+            timeout: 60,
+            memorySize: 1024,
             environment: {
-              DISCOUNTS_TABLE: discountsTableName,
-              ORDERS_TABLE: ordersTableName,
               PDF_BUCKET_NAME: bucketName,
+              LAMBDA1_BASE_URL: "${env:LAMBDA1_BASE_URL, ''}",
               ORDER_EMAIL_QUEUE_ARN: "${env:ORDER_EMAIL_QUEUE_ARN, ''}",
+              COUPON_STATE_QUEUE_URL: "${env:COUPON_STATE_QUEUE_URL, ''}",
               EVENTBRIDGE_RULE_NAME: "${env:EVENTBRIDGE_RULE_NAME, ''}",
               EVENTBRIDGE_TARGET_ID: "${env:EVENTBRIDGE_TARGET_ID, ''}",
               EVENTBRIDGE_TARGET_ARN: "${env:EVENTBRIDGE_TARGET_ARN, ''}",
               SES_FROM_EMAIL: "${env:SES_FROM_EMAIL, ''}",
               SES_TO_EMAIL: "${env:SES_TO_EMAIL, ''}",
+              ORDER_COUPON_USER_DB_SQL: "${env:ORDER_COUPON_USER_DB_SQL, ''}",
+              DB_NAME: "${env:DB_NAME, ''}",
+              DB_USER: "${env:DB_USER, ''}",
+              DB_PASSWORD: "${env:DB_PASSWORD, ''}",
+              DB_PORT: "${env:DB_PORT, '3306'}",
             },
             layers: [
               `arn:aws:lambda:${region}:${accountId}:layer:${layerName}:${layerVersion}`,
@@ -168,24 +145,14 @@ const serverlessConfig: AWS =
                 },
               },
               {
-                stream: {
-                  type: "dynamodb",
-                  arn: "${env:DISCOUNTS_STREAM_ARN}",
-                  batchSize: 5,
-                  startingPosition: "LATEST",
-                },
-              },
-              /*{
-                stream: {
-                  type: "dynamodb",
-                  arn: "${env:ORDERS_STREAM_ARN}",
-                  batchSize: 5,
-                  startingPosition: "LATEST",
-                },
-              },*/
-              {
                 sqs: {
                   arn: `arn:aws:sqs:${region}:${accountId}:orderQueue`,
+                  batchSize: 5,
+                },
+              },
+              {
+                sqs: {
+                  arn: `arn:aws:sqs:${region}:${accountId}:stateDiscountQueue`,
                   batchSize: 5,
                 },
               },

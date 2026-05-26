@@ -1,6 +1,6 @@
 import { type Request, type Response } from "express";
 import { randomUUID } from "crypto";
-import { OrderDynamo } from "../models/orderModel";
+import { Order } from "../models/orderModel";
 import {
   applyCouponToPrice,
   decrementCouponUsage,
@@ -13,13 +13,14 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { enqueueOrderEmail } from "../services/sqsService";
-import { OrderStatusPayload } from "../types/OrderStatus";
+import { OrderStatusPayload } from "../types/orderStatus";
+import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 
 type OrderOwner = { userId: string };
 
 export const getOrders = async (req: Request, res: Response) => {
   try {
-    const allOrders = await OrderDynamo.scan().exec();
+    const allOrders = await Order.findAll()
     return res.status(200).json({ allOrders });
   } catch (error) {
     res.status(500).json({ message: "Errore interno server" });
@@ -69,7 +70,7 @@ export const newOrder = async (req: Request, res: Response) => {
 
       await decrementCouponUsage(
         req.user.id,
-        ckeckCoupon.couponId,
+        ckeckCoupon.id,
         ckeckCoupon.usageCount,
       );
 
@@ -79,11 +80,12 @@ export const newOrder = async (req: Request, res: Response) => {
         quantity,
         price: priceFinal,
         coupon: ckeckCoupon.coupon,
-        couponId: ckeckCoupon.couponId,
+        couponId: ckeckCoupon.id,
         userId: req.user.id,
       };
 
-      const savedOrder = await OrderDynamo.create(orderData);
+      const savedOrder= await Order.create(orderData)
+
 
       await enqueueOrderEmail({
         subject: "Nuovo ordine ricevuto",
@@ -94,7 +96,7 @@ export const newOrder = async (req: Request, res: Response) => {
           typeFood: orderData.typeFood,
           quantity: orderData.quantity,
           price: orderData.price,
-          createdAt: savedOrder.createdAt,
+          createdAt: savedOrder.get("createdAt") as string,
         },
       });
 
@@ -113,7 +115,7 @@ export const newOrder = async (req: Request, res: Response) => {
       userId: req.user.id,
     };
 
-    const savedOrder = await OrderDynamo.create(orderData);
+    const savedOrder = await Order.create(orderData);
 
     await enqueueOrderEmail({
       subject: "Nuovo ordine ricevuto",
@@ -124,7 +126,7 @@ export const newOrder = async (req: Request, res: Response) => {
         typeFood: orderData.typeFood,
         quantity: orderData.quantity,
         price: orderData.price,
-        createdAt: savedOrder.createdAt,
+        createdAt: savedOrder.get("createdAt") as string,
       },
     });
 
@@ -147,7 +149,7 @@ export const updateOrder = async (req: Request, res: Response) => {
 
     const { typeFood, quantity } = req.body;
 
-    const order = (await OrderDynamo.get(id)) as
+    const order = (await Order.findByPk(id)) as
       | Partial<OrderOwner>
       | undefined;
 
@@ -164,7 +166,7 @@ export const updateOrder = async (req: Request, res: Response) => {
     if (quantity !== undefined) updates.quantity = quantity;
 
     if (Object.keys(updates).length > 0) {
-      await OrderDynamo.update(id, updates);
+      await Order.update(updates, {where: {id : id}});
     }
 
     return res.status(200).json({ message: "Ordine modificato correttamente" });
@@ -182,7 +184,7 @@ export const deleteOrder = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Id ordine mancante" });
     }
 
-    const order = (await OrderDynamo.get(id)) as
+    const order = (await Order.findByPk(id)) as
       | Partial<OrderOwner>
       | undefined;
 
@@ -194,7 +196,7 @@ export const deleteOrder = async (req: Request, res: Response) => {
       return res.status(403).json({ message: "Non autorizzato" });
     }
 
-    await OrderDynamo.delete(id);
+    await Order.destroy({where: {id: id}});
 
     return res
       .status(200)
@@ -210,10 +212,7 @@ export const getMyOrder = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Utente non autenticato" });
     }
 
-    const orders = await OrderDynamo.query("userId")
-      .using("UserOrdersIndex")
-      .eq(req.user.id)
-      .exec();
+      const orders = await Order.findAll({where:{userId: req.user?.id}})
 
     return res.status(200).json({ orders });
   } catch (error) {
@@ -223,13 +222,16 @@ export const getMyOrder = async (req: Request, res: Response) => {
 
 export const getMostPopularOrder = async (req: Request, res: Response) => {
   try {
-    const orders = await OrderDynamo.scan().exec();
+
+    const orders= await Order.findAll()
 
     const counters = new Map<string, number>();
     let mostPopular: string | null = null;
     let maxCount = 0;
 
-    for (const { typeFood } of orders) {
+    for (const order of orders) {
+      const typeFood = order.get("typeFood") as string | undefined;
+
       if (!typeFood) continue;
 
       const nextCount = (counters.get(typeFood) ?? 0) + 1;
@@ -268,7 +270,7 @@ export const getOrderBills = async (req: Request, res: Response) => {
     if (!(await data).Contents) {
       return res
         .status(404)
-        .json({ message: "Non è stato trovato alcun dato per il tuo user ID" });
+        .json({ message: "Non è stato trovato alcun dato per il tuo user ID"});
     }
 
     const billsMap = (await data).Contents?.map(async (file) => {
@@ -297,6 +299,14 @@ export const getOrderBills = async (req: Request, res: Response) => {
 };
 
 export const getStatus = async (req: Request, res: Response) => {
+
+  type GetStatusInvokeResponse = {
+  id?: string;
+  status?: string;
+  nextStatusAt?: number | null;
+};
+
+
   try {
     const orderIdParam = req.params.id;
     if (!orderIdParam) {
@@ -311,19 +321,28 @@ export const getStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Id ordine mancante" });
     }
 
-    const order = (await OrderDynamo.get(
-      orderId,
-    )) as unknown as OrderStatusPayload;
+    const lambdaClient = new LambdaClient({ region: "eu-south-1" });
 
-    if (!order) {
+    const command = new InvokeCommand({
+      FunctionName: process.env.UPDATE_STATUS_ORDER_LAMBDA_NAME,
+      Payload: Buffer.from(
+        JSON.stringify({ action: "get-order-status", orderId }),
+      ),
+    });
+
+    const response = await lambdaClient.send(command);
+
+    if (!response.Payload) {
+      return res.status(500).json({ message: "Errore nella comunicazione con il servizio di aggiornamento stato ordine" });
+    }
+    const payload = JSON.parse(Buffer.from(response.Payload!).toString()) as GetStatusInvokeResponse;
+
+    if (!payload.id || !payload.status) {
       return res.status(404).json({ message: "Ordine non trovato" });
     }
+    
+    return res.status(200).json(payload);
 
-    return res.status(200).json({
-      id: order.id,
-      status: order.status,
-      nextStatusAt: order.nextStatusAt ?? null,
-    });
   } catch (error) {
     return res.status(500).json({ message: "Errore server" });
   }

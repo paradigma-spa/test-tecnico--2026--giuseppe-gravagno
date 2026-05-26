@@ -4,6 +4,7 @@ import { type Request, type Response, type NextFunction } from "express";
 import {
   allUsers,
   getTopCustomer,
+  infoUserOrders,
   updateRole,
 } from "../controllers/userController";
 import { isAdmin, verifyJWT } from "../middleware/authMiddleware";
@@ -23,5 +24,6 @@ const checkValidation = (req: Request, res: Response, next: NextFunction) => {
 router.get("/all", verifyJWT, isAdmin, checkValidation, allUsers);
 router.post("/update_role", verifyJWT, isAdmin, checkValidation, updateRole); 
 router.get("/top_customer", verifyJWT, isAdmin, checkValidation, getTopCustomer);
+router.get("/summary_user/:userId", verifyJWT, checkValidation, infoUserOrders);
 
 export default router;

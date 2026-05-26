@@ -1,75 +1,59 @@
-# Lambda 2 - Coupon, EventBridge, DynamoDB Streams e SES
-
-Questa Lambda gestisce tre flussi distinti tramite un unico entrypoint:
-
-1. creazione coupon tramite evento EventBridge
-2. aggiornamento stato coupon quando DynamoDB Streams segnala una modifica su `DiscountsTable`
-3. invio email ordine e generazione PDF quando arriva un messaggio su SQS
-
-L'entrypoint unico e' `src/mainHandler.ts`, che instrada l'evento verso il dominio corretto in base alla forma dell'evento ricevuto.
+# Lambda 2 - Coupon con EventBridge e Email
 
 ## Architettura
 
-### Entry point
+Questa Lambda gestisce:
 
-- `src/mainHandler.ts`
-  - se l'evento contiene `Records` con `body`, viene trattato come evento SQS
-  - se l'evento contiene `Records` con `OldImage/NewImage`, viene trattato come evento DynamoDB Streams (coupon-state)
-  - se l'evento contiene `detail`, viene trattato come evento EventBridge
+- Stato dei coupon tramite EventBridge e SQS.
+- Invio di email tramite SQS e SES.
 
-### Dominio coupon
+### Modifiche recenti
 
-- `src/domains/coupon/handlers/couponEventBridgeHandler.ts`
-- `src/domains/coupon/services/createDiscountService.ts`
-- `src/domains/coupon/services/targetUpdaterService.ts`
-- `src/domains/coupon/utils/eventPayload.ts`
+In passato, questa Lambda utilizzava DynamoDB Streams per:
 
-Questo flusso:
+- Aggiornare lo stato dei coupon.
+- Inviare email relative agli ordini.
 
-1. legge il payload EventBridge
-2. recupera o deduce `userId`
-3. crea un coupon in DynamoDB
-4. aggiorna il target EventBridge per la successiva invocazione
+**Cambiamento:**
 
-### Dominio coupon-state
+- DynamoDB Streams è stato sostituito da SQS per migliorare la modularità e la scalabilità.
+- I file legacy relativi a DynamoDB Streams (`emailStreamsHandler.ts` e `readInsertPayloads.ts`) sono mantenuti nel repository ma non sono collegati al flusso runtime corrente.
 
-- `src/domains/coupon-state/handler/couponStateHandler.ts`
-- `src/domains/coupon-state/services/applyCouponStateChangeService.ts`
-- `src/domains/coupon-state/utils/readModifyPayloads.ts`
+### File legacy mantenuti
 
-Questo flusso:
+Per facilitare eventuali rollback/riconversioni verso DynamoDB Streams, alcuni file storici sono lasciati nel codice:
 
-1. riceve record `MODIFY` da DynamoDB Streams sulla tabella coupon
-2. confronta `OldImage` e `NewImage`
-3. quando `usageCount` passa da >0 a 0, disabilita automaticamente il coupon (`enabled=false`)
+- `src/domains/orders-email/handler/emailStreamsHandler.ts`
+- `src/domains/orders-email/utils/readInsertPayloads.ts`
 
-### Dominio orders-email
+Stato attuale:
 
-- `src/domains/orders-email/handler/emailSqsHandler.ts`
-- `src/domains/orders-email/sqsOrderEmail/sqsService.ts`
-- `src/domains/orders-email/services/sendOrderMail.ts`
-- `src/domains/orders-email/types/OrderEmailMessage.ts`
+- non importati da `src/mainHandler.ts`
+- non usati dal deploy corrente
+- da considerare solo come riferimento tecnico per una conversione futura
 
-Questo flusso:
+### Permessi IAM
 
-1. riceve un evento SQS
-2. deserializza i messaggi ordine
-3. genera un PDF riepilogo ordine
-4. salva il PDF su S3 (`PDF_BUCKET_NAME`, key `<userId>/ordine_<orderId>.pdf`)
-5. invia una mail tramite Amazon SESv2 con allegato PDF
+La configurazione attuale include permessi per:
+
+- SQS: invio, ricezione e cancellazione di messaggi.
+- SES: invio di email.
+
+I permessi relativi a DynamoDB Streams sono stati rimossi.
 
 ## Infrastruttura
 
-La funzione e' definita in `serverless.ts` come una singola Lambda:
+La funzione è definita in `serverless.ts` come una singola Lambda:
 
-- nome function: `orderCouponEmailHandler`
-- handler: `src/mainHandler.handler`
+- Nome funzione: `orderCouponEmailHandler`
+- Handler: `src/mainHandler.handler`
 
 La stessa Lambda:
 
-1. e' agganciata a DynamoDB Streams sulla tabella coupon (`DISCOUNTS_STREAM_ARN`)
-2. consuma messaggi dalla coda SQS `orderQueue`
-3. puo' essere invocata anche da EventBridge (instradamento applicativo su `detail`)
+1. Consuma messaggi dalla coda SQS `orderQueue`.
+2. Può essere invocata anche da EventBridge (instradamento applicativo su `detail`).
+
+**Nota:** La precedente configurazione con DynamoDB Streams (`DISCOUNTS_STREAM_ARN`) è stata rimossa.
 
 ## Variabili ambiente
 
@@ -80,7 +64,6 @@ DEPLOY=functions
 EVENTBRIDGE_RULE_NAME=eventCoupon
 EVENTBRIDGE_TARGET_ID=Id33368d08-7d89-4862-9ef4-9afbb8b0cc62
 EVENTBRIDGE_TARGET_ARN=arn:aws:lambda:eu-south-1:847041281071:function:coupon-service-dev-orderCouponEmailHandler
-DISCOUNTS_STREAM_ARN=arn:aws:dynamodb:eu-south-1:847041281071:table/order-api-dev-discounts/stream/2026-04-14T06:43:34.645
 ORDER_EMAIL_QUEUE_ARN=arn:aws:sqs:eu-south-1:847041281071:orderQueue
 SES_FROM_EMAIL=example@example.com
 SES_TO_EMAIL=example@example.com
@@ -89,22 +72,10 @@ SES_TO_EMAIL=example@example.com
 Note:
 
 - `EVENTBRIDGE_TARGET_ARN` deve puntare alla Lambda effettivamente deployata
-- `DISCOUNTS_STREAM_ARN` deve essere l'ARN dello stream attivo della tabella coupon, non l'ARN base della tabella
 - `ORDER_EMAIL_QUEUE_ARN` deve essere l'ARN della coda SQS usata da Lambda 1 per accodare eventi email ordine
+- `LAMBDA1_BASE_URL` deve puntare all'endpoint API Gateway di Lambda 1 (`https://.../dev`), non a un'istanza EC2
 - `SES_FROM_EMAIL` deve essere una mail verificata su SES
 - `PDF_BUCKET_NAME` e' valorizzata dalla configurazione serverless (`order-bill-s3`)
-
-## Permessi IAM
-
-La Lambda ha permessi per:
-
-1. CloudWatch Logs
-2. SES/SESv2 (`ses:SendEmail`, `ses:SendRawEmail`, `sesv2:SendEmail`)
-3. DynamoDB table access per ordini e coupon
-4. lettura DynamoDB Streams (`DescribeStream`, `GetRecords`, `GetShardIterator`, `ListStreams`)
-5. EventBridge `PutTargets`
-6. SQS (`SendMessage`, `ReceiveMessage`, `DeleteMessage`, `GetQueueAttributes`)
-7. S3 (`ListBucket`, `GetObject`, `PutObject`, `DeleteObject`)
 
 ## Deploy
 
@@ -139,9 +110,9 @@ npm run deploy:functions:dev
 
 ### Flusso coupon-state
 
-1. la tabella coupon emette un evento `MODIFY` su DynamoDB Streams
-2. `mainHandler` riconosce stream con `OldImage` + `NewImage`
-3. viene eseguito `couponStateHandler`
+1. Lambda 1 accoda messaggi di stato coupon su SQS
+2. la Lambda viene invocata dal trigger SQS
+3. `mainHandler` instrada al `couponStateHandler`
 4. i coupon con `usageCount` arrivato a 0 vengono disabilitati automaticamente
 
 ## Dipendenze principali

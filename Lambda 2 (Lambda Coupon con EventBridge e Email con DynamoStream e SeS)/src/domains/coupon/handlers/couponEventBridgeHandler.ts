@@ -31,7 +31,7 @@ export const handler = async (event: unknown) => {
 
   console.log("Coupon creato con successo", {
     userId: effectiveUserId,
-    couponId: created.couponId,
+    discountId: created?.get("id"),
   });
 
   return {

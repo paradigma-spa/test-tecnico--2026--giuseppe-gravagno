@@ -1,74 +1,66 @@
-import { OrderDynamo } from "../../../models/orderModel";
-
-type OrderStatusPayload = {
-  id: string;
-  status: string;
-  nextStatusAt: number;
-};
+import { Op } from "sequelize";
+import { Order } from "../../../models/orderModel";
 
 export const updateOrderStatus = async () => {
   try {
-    const orderCreated = (await OrderDynamo.query("status")
-      .using("StatusIndex")
-      .eq("CREATED")
-      .where("nextStatusAt")
-      .le(Math.floor(Date.now() / 1000))
-      .exec()) as unknown as OrderStatusPayload[];
 
-    const orderProcessing = (await OrderDynamo.query("status")
-      .using("StatusIndex")
-      .eq("PROCESSING")
-      .where("nextStatusAt")
-      .le(Math.floor(Date.now() / 1000))
-      .exec()) as unknown as OrderStatusPayload[];
+    const now = Math.floor(Date.now() / 1000);
 
-    const orderPreparation = (await OrderDynamo.query("status")
-      .using("StatusIndex")
-      .eq("PREPARATION")
-      .where("nextStatusAt")
-      .le(Math.floor(Date.now() / 1000))
-      .exec()) as unknown as OrderStatusPayload[];
-
-    const orderReady = (await OrderDynamo.query("status")
-      .using("StatusIndex")
-      .eq("READY")
-      .where("nextStatusAt")
-      .le(Math.floor(Date.now() / 1000))
-      .exec()) as unknown as OrderStatusPayload[];
-
-    const orderCreatedMap = orderCreated.map(async (order) => {
-      await OrderDynamo.update(order.id, {
+    // CREATED -> PROCESSING
+    await Order.update(
+      {
         status: "PROCESSING",
-        nextStatusAt: Math.floor(Date.now() / 1000) + 300, // 5 minuti
-      });
-    });
+        nextStatusAt: now + 300,
+      },
+      {
+        where: {
+          status: "CREATED",
+          nextStatusAt: { [Op.lte]: now },
+        },
+      },
+    );
 
-    const orderProcessingMap = orderProcessing.map(async (order) => {
-      await OrderDynamo.update(order.id, {
+    // PROCESSING -> PREPARATION
+    await Order.update(
+      {
         status: "PREPARATION",
-        nextStatusAt: Math.floor(Date.now() / 1000) + 400, // ~6 minuti
-      });
-    });
+        nextStatusAt: now + 400,
+      },
+      {
+        where: {
+          status: "PROCESSING",
+          nextStatusAt: { [Op.lte]: now },
+        },
+      },
+    );
 
-    const orderPreparationMap = orderPreparation.map(async (order) => {
-      await OrderDynamo.update(order.id, {
+    // PREPARATION -> READY
+    await Order.update(
+      {
         status: "READY",
-        nextStatusAt: Math.floor(Date.now() / 1000) + 600, // 10 minuti
-      });
-    });
+        nextStatusAt: now + 600,
+      },
+      {
+        where: {
+          status: "PREPARATION",
+          nextStatusAt: { [Op.lte]: now },
+        },
+      },
+    );
 
-    const orderReadyMap = orderReady.map(async (order) => {
-      await OrderDynamo.update(order.id, {
+    // READY -> COMPLETED
+    await Order.update(
+      {
         status: "COMPLETED",
-      });
-    });
+      },
+      {
+        where: {
+          status: "READY",
+          nextStatusAt: { [Op.lte]: now },
+        },
+      },
+    );
 
-    await Promise.all([
-      ...orderCreatedMap,
-      ...orderProcessingMap,
-      ...orderPreparationMap,
-      ...orderReadyMap,
-    ]);
   } catch (error) {
     console.error(
       "Errore durante l'aggiornamento dello stato dell'ordine:",
